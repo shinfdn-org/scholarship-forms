@@ -1,0 +1,92 @@
+---
+/**
+ * TextareaWithCount.astro - 文字数カウント付きテキストエリア
+ *
+ * リアルタイムで文字数をカウントし、上限超過時に警告表示
+ */
+
+interface Props {
+  /** input要素のname属性 */
+  name: string
+  /** ラベルテキスト */
+  label?: string
+  /** プレースホルダー */
+  placeholder?: string
+  /** 必須かどうか */
+  required?: boolean
+  /** 目安文字数 */
+  targetLength?: number
+  /** 最大文字数 */
+  maxLength?: number
+  /** 説明テキスト */
+  description?: string
+  /** 行数 */
+  rows?: number
+}
+
+const {
+  name,
+  label,
+  placeholder = '',
+  required = false,
+  targetLength = 100,
+  maxLength = 200,
+  description,
+  rows = 4,
+} = Astro.props
+
+const id = `textarea-${name}`
+---
+
+<div class="form-group textarea-with-count" data-max={maxLength}>
+  {
+    label && (
+      <label for={id}>
+        {label}
+        {required && <span class="required-badge">必須</span>}
+        {!required && <span class="optional-badge">任意</span>}
+      </label>
+    )
+  }
+  {
+    description && (
+      <p class="description">
+        {description}（目安: {targetLength}文字程度、上限: {maxLength}文字）
+      </p>
+    )
+  }
+
+  <textarea
+    id={id}
+    name={name}
+    placeholder={placeholder}
+    rows={rows}
+    data-required={required}
+    maxlength={maxLength}></textarea>
+
+  <div class="char-count">
+    <span class="current">0</span> / {maxLength}
+  </div>
+
+  <p id={`${id}-error`} class="error-text">入力してください</p>
+</div>
+
+<script>
+  document.querySelectorAll('.textarea-with-count').forEach((container) => {
+    const textarea = container.querySelector('textarea') as HTMLTextAreaElement
+    const charCount = container.querySelector('.char-count') as HTMLElement
+    const currentSpan = charCount.querySelector('.current') as HTMLSpanElement
+    const maxLength = parseInt(container.dataset.max || '200', 10)
+
+    textarea.addEventListener('input', () => {
+      const length = textarea.value.length
+      currentSpan.textContent = length.toString()
+
+      if (length > maxLength) {
+        charCount.classList.add('over')
+      } else {
+        charCount.classList.remove('over')
+      }
+    })
+  })
+</script>

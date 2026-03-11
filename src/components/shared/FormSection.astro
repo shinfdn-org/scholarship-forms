@@ -1,0 +1,51 @@
+---
+/**
+ * FormSection.astro - フォームセクションコンポーネント
+ *
+ * フォームのセクション（質問グループ）を統一的にレイアウト
+ */
+
+interface Props {
+  /** ラベルテキスト */
+  label?: string
+  /** 必須かどうか */
+  required?: boolean
+  /** 説明テキスト */
+  description?: string
+  /** エラーメッセージ */
+  errorMessage?: string
+  /** エラー要素のID */
+  errorId?: string
+}
+
+const {
+  label,
+  required = false,
+  description,
+  errorMessage,
+  errorId,
+} = Astro.props
+---
+
+<div class="form-group">
+  {
+    label && (
+      <label class="form-label">
+        {label}
+        {required && <span class="required-badge">必須</span>}
+        {!required && <span class="optional-badge">任意</span>}
+      </label>
+    )
+  }
+  {description && <p class="description">{description}</p>}
+
+  <slot />
+
+  {
+    errorMessage && (
+      <p id={errorId} class="error-text">
+        {errorMessage}
+      </p>
+    )
+  }
+</div>

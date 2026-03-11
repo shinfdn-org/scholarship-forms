@@ -1,0 +1,237 @@
+---
+/**
+ * MultiCheckboxWithOther.astro - その他入力付き複数選択
+ *
+ * 複数選択チェックボックスに「その他」テキスト入力を追加
+ * form.run の multiple_choice タイプを再現
+ */
+
+interface Props {
+  /** input要素のname属性 */
+  name: string
+  /** 選択肢の配列 */
+  items: string[]
+  /** 「その他」オプションを有効にするか */
+  hasOther?: boolean
+  /** 必須かどうか */
+  required?: boolean
+  /** 最大選択数（0 = 無制限） */
+  maxSelect?: number
+  /** 最小選択数 */
+  minSelect?: number
+  /** ラベルテキスト */
+  label?: string
+  /** 説明テキスト */
+  description?: string
+  /** コンポーネントのID */
+  id?: string
+  /** 2カラムレイアウト */
+  twoColumn?: boolean
+  /** 選択肢をシャッフルするか（「その他」は常に最後に表示） */
+  shuffle?: boolean
+}
+
+const {
+  name,
+  items,
+  hasOther = false,
+  required = false,
+  maxSelect = 0,
+  minSelect = 0,
+  label,
+  description,
+  id = `multi-checkbox-${name}`,
+  twoColumn = false,
+  shuffle = false,
+} = Astro.props
+---
+
+<div
+  class="form-group multi-checkbox-other"
+  id={id}
+  data-name={name}
+  data-max-select={maxSelect}
+  data-shuffle={shuffle}
+>
+  {
+    label && (
+      <label class="form-label">
+        {label}
+        {required ? (
+          <span class="required-badge">必須</span>
+        ) : (
+          <span class="optional-badge">任意</span>
+        )}
+      </label>
+    )
+  }
+  {description && <p class="description">{description}</p>}
+
+  <div class={`checkbox-list ${twoColumn ? 'two-column' : ''}`}>
+    {
+      items.map((item, idx) => (
+        <div class="checkbox-wrapper" data-shuffle-item="true">
+          <input
+            type="checkbox"
+            id={`${id}-${idx}`}
+            name={`${name}[]`}
+            value={item}
+            data-required={required && idx === 0}
+            data-conditional-required={required && idx === 0}
+          />
+          <label for={`${id}-${idx}`}>{item}</label>
+        </div>
+      ))
+    }
+
+    {
+      hasOther && (
+        <div class="checkbox-wrapper other-wrapper">
+          <input
+            type="checkbox"
+            id={`${id}-other`}
+            name={`${name}[]`}
+            value="_fr_other"
+            class="other-checkbox"
+            data-other-trigger="true"
+          />
+          <label for={`${id}-other`}>その他</label>
+        </div>
+      )
+    }
+  </div>
+
+  {
+    hasOther && (
+      <div class="other-input-wrapper" style="display: none;">
+        <input
+          type="text"
+          name={`${name}_その他`}
+          placeholder="その他の詳細"
+          class="other-input"
+        />
+      </div>
+    )
+  }
+
+  <p id={`${id}-error`} class="error-text">選択してください</p>
+</div>
+
+<script>
+  import { shuffleArray } from '@data/shuffle'
+
+  document.querySelectorAll('.multi-checkbox-other').forEach((container) => {
+    const maxSelect = parseInt(
+      container.getAttribute('data-max-select') || '0',
+      10,
+    )
+
+    // シャッフル処理（「その他」以外の選択肢をランダム化）
+    if (container.getAttribute('data-shuffle') === 'true') {
+      const checkboxList = container.querySelector('.checkbox-list')
+      if (checkboxList) {
+        const shuffleItems = Array.from(
+          checkboxList.querySelectorAll('[data-shuffle-item="true"]'),
+        )
+        const otherWrapper = checkboxList.querySelector('.other-wrapper')
+
+        shuffleArray(shuffleItems)
+        shuffleItems.forEach((item) => checkboxList.appendChild(item))
+        // 「その他」を常に最後に配置
+        if (otherWrapper) {
+          checkboxList.appendChild(otherWrapper)
+        }
+      }
+    }
+
+    const checkboxes = container.querySelectorAll(
+      'input[type="checkbox"]',
+    ) as NodeListOf<HTMLInputElement>
+    const otherCheckbox = container.querySelector(
+      '.other-checkbox',
+    ) as HTMLInputElement | null
+    const otherInputWrapper = container.querySelector(
+      '.other-input-wrapper',
+    ) as HTMLElement | null
+
+    // 「その他」チェック時にテキスト入力を表示
+    if (otherCheckbox && otherInputWrapper) {
+      otherCheckbox.addEventListener('change', () => {
+        otherInputWrapper.style.display = otherCheckbox.checked
+          ? 'block'
+          : 'none'
+        if (!otherCheckbox.checked) {
+          const input = otherInputWrapper.querySelector(
+            'input',
+          ) as HTMLInputElement
+          if (input) input.value = ''
+        }
+      })
+    }
+
+    // 最大選択数の制限
+    if (maxSelect > 0) {
+      checkboxes.forEach((checkbox) => {
+        checkbox.addEventListener('change', () => {
+          const checkedCount = container.querySelectorAll(
+            'input[type="checkbox"]:checked',
+          ).length
+
+          if (checkedCount >= maxSelect) {
+            checkboxes.forEach((cb) => {
+              if (!cb.checked) {
+                cb.disabled = true
+              }
+            })
+          } else {
+            checkboxes.forEach((cb) => {
+              cb.disabled = false
+            })
+          }
+        })
+      })
+    }
+  })
+</script>
+
+<style>
+  .multi-checkbox-other {
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+  }
+
+  .checkbox-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .checkbox-list.two-column {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0 0.5rem;
+  }
+
+  .other-input-wrapper {
+    margin-top: 0.5rem;
+  }
+
+  .other-input {
+    width: 100%;
+    padding: 0.6rem 0.8rem;
+    border: 1px solid var(--color-border, #ccc);
+    border-radius: 6px;
+    font-size: 1rem;
+  }
+
+  .other-input:focus {
+    outline: none;
+    border-color: var(--color-primary, #009688);
+  }
+
+  @media (max-width: 600px) {
+    .checkbox-list.two-column {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

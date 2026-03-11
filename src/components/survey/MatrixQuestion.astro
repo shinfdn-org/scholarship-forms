@@ -1,0 +1,174 @@
+---
+/**
+ * MatrixQuestion.astro - マトリクス形式の質問
+ *
+ * 行と列のグリッドで回答を選択する形式
+ * 例: 各学年での文理意識、周囲の反応など
+ */
+
+interface Props {
+  /** input要素のname属性 */
+  name: string
+  /** 行ラベルの配列 */
+  rows: { label: string; key: string }[]
+  /** 列ラベル（選択肢）の配列 */
+  columns: string[]
+  /** ラベルテキスト */
+  label?: string
+  /** 説明テキスト */
+  description?: string
+  /** 必須かどうか */
+  required?: boolean
+}
+
+const {
+  name,
+  rows,
+  columns,
+  label,
+  description,
+  required = false,
+} = Astro.props
+---
+
+<div class="form-group matrix-question" id={`${name}-group`}>
+  {
+    label && (
+      <label class="form-label">
+        {label}
+        {required ? (
+          <span class="required-badge">必須</span>
+        ) : (
+          <span class="optional-badge">任意</span>
+        )}
+      </label>
+    )
+  }
+  {description && <p class="description">{description}</p>}
+
+  <div class="matrix-wrapper">
+    <table class="matrix-table">
+      <thead>
+        <tr>
+          <th class="row-header"></th>
+          {columns.map((col) => <th class="col-header">{col}</th>)}
+        </tr>
+      </thead>
+      <tbody>
+        {
+          rows.map((row) => (
+            <tr>
+              <td class="row-label">{row.label}</td>
+              {columns.map((col, colIdx) => (
+                <td class="cell">
+                  <label class="radio-cell">
+                    <input
+                      type="radio"
+                      name={`${name}_${row.key}`}
+                      value={col}
+                      data-required={required && colIdx === 0}
+                    />
+                  </label>
+                </td>
+              ))}
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <p id={`${name}-error`} class="error-text">選択してください</p>
+</div>
+
+<style>
+  .matrix-question {
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+  }
+
+  .matrix-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-top: 0.5rem;
+  }
+
+  .matrix-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 400px;
+    font-size: 0.9rem;
+  }
+
+  .matrix-table th,
+  .matrix-table td {
+    padding: 0.6rem 0.4rem;
+    text-align: center;
+    border: 1px solid var(--color-border-light, #eee);
+  }
+
+  .matrix-table thead th {
+    background-color: #f8f8f8;
+    font-weight: normal;
+    font-size: 0.8rem;
+    color: #666;
+  }
+
+  .row-header {
+    width: 20%;
+    min-width: 100px;
+  }
+
+  .col-header {
+    font-size: 0.75rem;
+    line-height: 1.3;
+    vertical-align: bottom;
+  }
+
+  .row-label {
+    text-align: left;
+    font-size: 0.9rem;
+    padding-left: 0.75rem !important;
+    padding-right: 0.5rem !important;
+    background-color: #fafafa;
+  }
+
+  .cell {
+    vertical-align: middle;
+  }
+
+  .radio-cell {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    min-height: 30px;
+  }
+
+  .radio-cell input[type='radio'] {
+    transform: scale(1.2);
+    accent-color: var(--color-primary, #009688);
+    cursor: pointer;
+  }
+
+  /* モバイル対応 */
+  @media (max-width: 600px) {
+    .matrix-table {
+      font-size: 0.8rem;
+      min-width: 350px;
+    }
+
+    .matrix-table th,
+    .matrix-table td {
+      padding: 0.4rem 0.2rem;
+    }
+
+    .col-header {
+      font-size: 0.65rem;
+    }
+
+    .row-label {
+      font-size: 0.8rem;
+    }
+  }
+</style>

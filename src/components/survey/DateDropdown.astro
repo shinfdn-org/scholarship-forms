@@ -1,0 +1,254 @@
+---
+/**
+ * DateDropdown.astro - 生年月日ドロップダウン
+ *
+ * 年・月・日の3つのセレクトボックスで日付を選択
+ * form.run形式と同様のUI
+ */
+
+interface Props {
+  /** input要素のname属性 */
+  name: string
+  /** ラベルテキスト */
+  label?: string
+  /** 必須かどうか */
+  required?: boolean
+  /** 開始年（デフォルト: 2004） */
+  sinceYear?: number
+  /** 終了年（デフォルト: 現在年） */
+  untilYear?: number
+  /** デフォルト年 */
+  defaultYear?: number
+  /** 説明テキスト */
+  description?: string
+}
+
+const {
+  name,
+  label = '生年月日',
+  required = false,
+  sinceYear = 2004,
+  untilYear = new Date().getFullYear(),
+  defaultYear,
+  description,
+} = Astro.props
+
+// 年の配列を生成
+const years = Array.from(
+  { length: untilYear - sinceYear + 1 },
+  (_, i) => sinceYear + i,
+)
+
+// 月の配列（01-12）
+const months = Array.from({ length: 12 }, (_, i) =>
+  String(i + 1).padStart(2, '0'),
+)
+
+// 日の配列（01-31）
+const days = Array.from({ length: 31 }, (_, i) =>
+  String(i + 1).padStart(2, '0'),
+)
+---
+
+<div class="form-group date-dropdown" id={`${name}-group`}>
+  <label class="form-label">
+    {label}
+    {
+      required ? (
+        <span class="required-badge">必須</span>
+      ) : (
+        <span class="optional-badge">任意</span>
+      )
+    }
+  </label>
+
+  {description && <p class="description">{description}</p>}
+
+  <div class="date-selects">
+    <div class="date-select-item">
+      <select id={`${name}_year`} data-date-part="year" data-date-name={name}>
+        <option value="">----</option>
+        {
+          years.map((year) => (
+            <option value={year} selected={defaultYear === year}>
+              {year}
+            </option>
+          ))
+        }
+      </select>
+      <span class="date-unit">年</span>
+    </div>
+
+    <div class="date-select-item">
+      <select id={`${name}_month`} data-date-part="month" data-date-name={name}>
+        <option value="">--</option>
+        {months.map((month) => <option value={month}>{month}</option>)}
+      </select>
+      <span class="date-unit">月</span>
+    </div>
+
+    <div class="date-select-item">
+      <select id={`${name}_day`} data-date-part="day" data-date-name={name}>
+        <option value="">--</option>
+        {days.map((day) => <option value={day}>{day}</option>)}
+      </select>
+      <span class="date-unit">日</span>
+    </div>
+  </div>
+
+  <input
+    type="hidden"
+    id={name}
+    name={name}
+    data-required={required}
+    data-conditional-required={required}
+  />
+
+  <p id={`${name}-error`} class="error-text">入力してください</p>
+</div>
+
+<script>
+  document.querySelectorAll('.date-dropdown').forEach((container) => {
+    const yearSelect = container.querySelector(
+      '[data-date-part="year"]',
+    ) as HTMLSelectElement
+    const monthSelect = container.querySelector(
+      '[data-date-part="month"]',
+    ) as HTMLSelectElement
+    const daySelect = container.querySelector(
+      '[data-date-part="day"]',
+    ) as HTMLSelectElement
+    const hiddenInput = container.querySelector(
+      'input[type="hidden"]',
+    ) as HTMLInputElement
+
+    /** 指定した年・月の最大日数を返す */
+    const getDaysInMonth = (year: number, month: number): number => {
+      return new Date(year, month, 0).getDate()
+    }
+
+    /** 日のセレクトボックスの選択肢を更新する */
+    const updateDayOptions = () => {
+      const year = parseInt(yearSelect?.value || '0', 10)
+      const month = parseInt(monthSelect?.value || '0', 10)
+      if (!year || !month) return
+
+      const maxDay = getDaysInMonth(year, month)
+      const currentDay = parseInt(daySelect?.value || '0', 10)
+
+      // 現在の選択肢数と最大日数が異なる場合のみ更新
+      const currentOptions = daySelect.querySelectorAll('option[value]')
+      // 最初の空optionを除いた数
+      const optionCount = Array.from(currentOptions).filter(
+        (opt) => (opt as HTMLOptionElement).value !== '',
+      ).length
+
+      if (optionCount !== maxDay) {
+        // 空のデフォルトオプションを保持
+        daySelect.innerHTML = ''
+        const defaultOption = document.createElement('option')
+        defaultOption.value = ''
+        defaultOption.textContent = '--'
+        daySelect.appendChild(defaultOption)
+
+        for (let d = 1; d <= maxDay; d++) {
+          const option = document.createElement('option')
+          option.value = String(d).padStart(2, '0')
+          option.textContent = String(d).padStart(2, '0')
+          daySelect.appendChild(option)
+        }
+
+        // 元の選択値を復元（範囲内なら）
+        if (currentDay > 0 && currentDay <= maxDay) {
+          daySelect.value = String(currentDay).padStart(2, '0')
+        }
+      }
+    }
+
+    const updateHiddenValue = () => {
+      const year = yearSelect?.value || ''
+      const month = monthSelect?.value || ''
+      const day = daySelect?.value || ''
+
+      if (year && month && day) {
+        hiddenInput.value = `${year}-${month}-${day}`
+      } else {
+        hiddenInput.value = ''
+      }
+    }
+
+    yearSelect?.addEventListener('change', () => {
+      updateDayOptions()
+      updateHiddenValue()
+    })
+    monthSelect?.addEventListener('change', () => {
+      updateDayOptions()
+      updateHiddenValue()
+    })
+    daySelect?.addEventListener('change', updateHiddenValue)
+  })
+</script>
+
+<style>
+  .date-dropdown {
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+  }
+
+  .date-selects {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .date-select-item {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .date-select-item select {
+    padding: 0.6rem 0.5rem;
+    border: 1px solid var(--color-border, #ccc);
+    border-radius: 6px;
+    font-size: 1rem;
+    background-color: white;
+  }
+
+  .date-select-item select:focus {
+    outline: none;
+    border-color: var(--color-primary, #009688);
+  }
+
+  .date-unit {
+    font-size: 0.9rem;
+    color: #666;
+  }
+
+  /* 年選択は幅広め */
+  [data-date-part='year'] {
+    width: 90px;
+  }
+
+  /* 月・日は狭め */
+  [data-date-part='month'],
+  [data-date-part='day'] {
+    width: 65px;
+  }
+
+  @media (max-width: 480px) {
+    .date-selects {
+      gap: 0.5rem;
+    }
+
+    [data-date-part='year'] {
+      width: 80px;
+    }
+
+    [data-date-part='month'],
+    [data-date-part='day'] {
+      width: 60px;
+    }
+  }
+</style>

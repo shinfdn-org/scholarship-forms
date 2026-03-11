@@ -1,0 +1,247 @@
+---
+/**
+ * RandomizedCheckbox.astro - ランダム化チェックボックスコンポーネント
+ *
+ * 選択肢をランダムシャッフルして表示し、選択制限ロジックを実装
+ *
+ * 機能:
+ * - Fisher-Yates シャッフルによるランダム化
+ * - 最大選択数の制限
+ * - 排他選択オプション（「当てはまるものはない」など）
+ */
+
+interface Props {
+  /** input要素のname属性 */
+  name: string
+  /** 選択肢の配列 */
+  items: string[]
+  /** 排他選択用の選択肢（常に最後に表示） */
+  exclusiveItem?: string
+  /** 排他選択に自由記述欄を付けるか */
+  exclusiveHasText?: boolean
+  /** 排他選択の自由記述欄のname属性 */
+  exclusiveTextName?: string
+  /** 排他選択の自由記述欄のplaceholder */
+  exclusiveTextPlaceholder?: string
+  /** 最大選択数（0で無制限） */
+  maxSelect?: number
+  /** 必須かどうか */
+  required?: boolean
+  /** コンポーネントのID */
+  id?: string
+  /** ラベルテキスト */
+  label?: string
+  /** 説明テキスト */
+  description?: string
+}
+
+const {
+  name,
+  items,
+  exclusiveItem,
+  exclusiveHasText = false,
+  exclusiveTextName = `${name}_other_text`,
+  exclusiveTextPlaceholder = '自由記述',
+  maxSelect = 0,
+  required = false,
+  id = `checkbox-${name}`,
+  label,
+  description,
+} = Astro.props
+---
+
+<div
+  class="randomized-checkbox"
+  id={id}
+  data-name={name}
+  data-max-select={maxSelect}
+  data-exclusive-item={exclusiveItem || ''}
+>
+  {
+    label && (
+      <label>
+        {label}
+        {required && <span class="required-badge">必須</span>}
+      </label>
+    )
+  }
+  {description && <p class="description">{description}</p>}
+
+  <div class="checkbox-container">
+    {
+      items.map((item, idx) => (
+        <div class="checkbox-wrapper" data-shuffle="true">
+          <input
+            type="checkbox"
+            id={`${id}-${idx}`}
+            name={name}
+            value={item}
+            data-required={required}
+          />
+          <label for={`${id}-${idx}`}>{item}</label>
+        </div>
+      ))
+    }
+    {
+      exclusiveItem && (
+        <div class="checkbox-wrapper" data-exclusive="true">
+          <input
+            type="checkbox"
+            id={`${id}-exclusive`}
+            name={name}
+            value={exclusiveItem}
+            data-required={required}
+          />
+          <label for={`${id}-exclusive`}>{exclusiveItem}</label>
+        </div>
+      )
+    }
+  </div>
+
+  {
+    exclusiveItem && exclusiveHasText && (
+      <div class="exclusive-text-wrapper" style="display: none;">
+        <textarea
+          name={exclusiveTextName}
+          placeholder={exclusiveTextPlaceholder}
+          class="exclusive-text-input"
+          rows="3"
+        />
+      </div>
+    )
+  }
+
+  <p id={`${id}-error`} class="error-text">選択してください</p>
+</div>
+
+<script>
+  import { shuffleArray } from '@data/shuffle'
+
+  class RandomizedCheckboxComponent {
+    private container: HTMLElement
+    private checkboxContainer: HTMLElement
+    private name: string
+    private maxSelect: number
+    private exclusiveItem: string
+    private checkboxes: HTMLInputElement[]
+    private exclusiveTextWrapper: HTMLElement | null
+
+    constructor(container: HTMLElement) {
+      this.container = container
+      this.checkboxContainer = container.querySelector(
+        '.checkbox-container',
+      ) as HTMLElement
+      this.name = container.dataset.name || ''
+      this.maxSelect = parseInt(container.dataset.maxSelect || '0', 10)
+      this.exclusiveItem = container.dataset.exclusiveItem || ''
+      this.exclusiveTextWrapper = this.container.querySelector(
+        '.exclusive-text-wrapper',
+      )
+
+      this.shuffleItems()
+      this.checkboxes = Array.from(
+        container.querySelectorAll(`input[name="${this.name}"]`),
+      )
+      this.setupEventListeners()
+    }
+
+    /**
+     * 選択肢の順序バイアスを防ぐため、毎回ランダム化
+     */
+    private shuffleItems() {
+      const items = Array.from(
+        this.checkboxContainer.querySelectorAll('[data-shuffle="true"]'),
+      )
+      const exclusiveItem = this.checkboxContainer.querySelector(
+        '[data-exclusive="true"]',
+      )
+
+      shuffleArray(items)
+
+      // Re-append in shuffled order
+      items.forEach((item) => this.checkboxContainer.appendChild(item))
+
+      // Exclusive item always at the end
+      if (exclusiveItem) {
+        this.checkboxContainer.appendChild(exclusiveItem)
+      }
+    }
+
+    private setupEventListeners() {
+      this.checkboxContainer.addEventListener('change', () =>
+        this.handleChange(),
+      )
+    }
+
+    private handleChange() {
+      const checked = this.checkboxes.filter((cb) => cb.checked)
+      const exclusiveCheckbox = this.checkboxes.find(
+        (cb) => cb.value === this.exclusiveItem,
+      )
+      const exclusiveChecked = exclusiveCheckbox?.checked || false
+
+      this.checkboxes.forEach((cb) => {
+        if (exclusiveChecked) {
+          // 排他選択が選ばれている場合
+          if (cb !== exclusiveCheckbox) {
+            cb.checked = false
+            cb.disabled = true
+          } else {
+            cb.disabled = false
+          }
+        } else {
+          // 通常の選択肢が選ばれている場合
+          if (cb !== exclusiveCheckbox) {
+            // 最大選択数に達したら、未選択の項目を無効化
+            cb.disabled =
+              this.maxSelect > 0 &&
+              checked.length >= this.maxSelect &&
+              !cb.checked
+          } else {
+            // 1つでも選択があれば排他選択を無効化
+            cb.disabled = checked.length > 0
+          }
+        }
+      })
+
+      // 排他選択のテキスト入力の表示/非表示
+      if (this.exclusiveTextWrapper) {
+        this.exclusiveTextWrapper.style.display = exclusiveChecked
+          ? 'block'
+          : 'none'
+        if (!exclusiveChecked) {
+          const textarea = this.exclusiveTextWrapper.querySelector(
+            'textarea',
+          ) as HTMLTextAreaElement | null
+          if (textarea) textarea.value = ''
+        }
+      }
+    }
+  }
+
+  // Initialize all randomized checkbox components
+  document.querySelectorAll('.randomized-checkbox').forEach((container) => {
+    new RandomizedCheckboxComponent(container as HTMLElement)
+  })
+</script>
+
+<style>
+  .exclusive-text-wrapper {
+    margin-top: 0.75rem;
+  }
+
+  .exclusive-text-input {
+    width: 100%;
+    padding: 0.6rem 0.8rem;
+    border: 1px solid var(--color-border, #ccc);
+    border-radius: 6px;
+    font-size: 1rem;
+    font-family: inherit;
+    resize: vertical;
+  }
+
+  .exclusive-text-input:focus {
+    outline: none;
+    border-color: var(--color-primary, #009688);
+  }
+</style>

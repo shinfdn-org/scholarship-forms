@@ -1,0 +1,207 @@
+---
+/**
+ * FormValidator.astro - フォームバリデーション
+ *
+ * フォーム送信前に全必須項目を検証し、
+ * エラーがあれば該当箇所を強調表示してスクロール
+ *
+ * 使い方:
+ * 1. このコンポーネントをページに配置
+ * 2. フォームに id="validatedForm" を設定
+ * 3. 必須フィールドに data-required="true" を設定
+ */
+
+interface Props {
+  /** フォームのID */
+  formId?: string
+}
+
+const { formId = 'validatedForm' } = Astro.props
+---
+
+<div data-form-validator={formId} style="display:none;"></div>
+
+<script>
+  const marker = document.querySelector('[data-form-validator]') as HTMLElement
+  const formId = marker?.dataset.formValidator || 'validatedForm'
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const form = document.getElementById(formId)
+    if (!form) return
+
+    form.addEventListener('submit', (event: SubmitEvent) => {
+      event.preventDefault()
+
+      let isValid = true
+      let firstErrorElement: HTMLElement | null = null
+
+      /**
+       * フィールドまたはその祖先要素が非表示かチェック
+       * ConditionalSection（ラジオ分岐）や scholar セクション（URL パラメータ分岐）で
+       * display: none になっている要素内のフィールドをバリデーション対象から除外する
+       */
+      function isHidden(el: HTMLElement): boolean {
+        let current: HTMLElement | null = el
+        while (current && current !== form) {
+          if (current.style && current.style.display === 'none') return true
+          current = current.parentElement
+        }
+        return false
+      }
+
+      // 前回のエラー表示をリセット
+      document.querySelectorAll('.error-highlight').forEach((el) => {
+        el.classList.remove('error-highlight')
+      })
+      document.querySelectorAll('.error-text').forEach((el) => {
+        el.classList.remove('show')
+      })
+
+      // 必須フィールドの検証
+      const requiredFields = form.querySelectorAll<HTMLInputElement>(
+        '[data-required="true"]',
+      )
+
+      requiredFields.forEach((field) => {
+        // 非表示セクション内のフィールドはスキップ
+        if (isHidden(field)) return
+
+        let isEmpty = false
+
+        if (field.type === 'checkbox') {
+          // チェックボックスは同じ name のグループで1つ以上選択されているか確認
+          const name = field.getAttribute('name')
+          const checkboxGroup = form.querySelectorAll<HTMLInputElement>(
+            `input[name="${name}"]`,
+          )
+          const isAnyChecked = Array.from(checkboxGroup).some(
+            (cb) => cb.checked,
+          )
+          // 最初のチェックボックスのみでチェック（重複エラー防止）
+          if (field === checkboxGroup[0]) {
+            isEmpty = !isAnyChecked
+          } else {
+            return // 2番目以降はスキップ
+          }
+        } else if (field.type === 'radio') {
+          // ラジオボタンは同じ name のグループで1つ以上選択されているか確認
+          const name = field.getAttribute('name')
+          const radioGroup = form.querySelectorAll<HTMLInputElement>(
+            `input[name="${name}"]`,
+          )
+          const isAnyChecked = Array.from(radioGroup).some(
+            (radio) => radio.checked,
+          )
+          // 最初のラジオボタンのみでチェック
+          if (field === radioGroup[0]) {
+            isEmpty = !isAnyChecked
+          } else {
+            return // 2番目以降はスキップ
+          }
+        } else {
+          isEmpty = !field.value || field.value.trim() === ''
+        }
+
+        if (isEmpty) {
+          if (!firstErrorElement) firstErrorElement = field
+
+          // エラー強調スタイルを適用
+          field.classList.add('error-highlight')
+
+          // 対応するエラーメッセージ要素を表示
+          // 1. field.id + '-error' で探す
+          let errorEl = document.getElementById(field.id + '-error')
+
+          // 2. name属性ベースで探す（ラジオグループ・チェックボックス対応）
+          if (!errorEl) {
+            const name = field.getAttribute('name')
+            if (name) {
+              errorEl = document.getElementById(name + '-error')
+            }
+          }
+
+          // 3. フォールバック: 親 .form-group 内の .error-text を探す
+          if (!errorEl) {
+            const formGroup = field.closest('.form-group')
+            if (formGroup) {
+              errorEl = formGroup.querySelector('.error-text')
+            }
+          }
+
+          if (errorEl) {
+            errorEl.classList.add('show')
+          }
+
+          isValid = false
+        }
+      })
+
+      // チェックボックスグループの検証（最低1つ選択必須）
+      const checkboxGroups = form.querySelectorAll(
+        '.randomized-checkbox, .multi-checkbox, .multi-checkbox-other',
+      )
+      checkboxGroups.forEach((group) => {
+        // 非表示セクション内のグループはスキップ
+        if (isHidden(group as HTMLElement)) return
+
+        const checkboxes = group.querySelectorAll<HTMLInputElement>(
+          'input[type="checkbox"]',
+        )
+        const isAnyChecked = Array.from(checkboxes).some((cb) => cb.checked)
+
+        // data-required がある場合のみ検証
+        const hasRequired = Array.from(checkboxes).some(
+          (cb) => cb.dataset.required === 'true',
+        )
+
+        if (hasRequired && !isAnyChecked) {
+          isValid = false
+          if (!firstErrorElement) firstErrorElement = checkboxes[0]
+
+          const errorEl = group.querySelector('.error-text')
+          if (errorEl) {
+            errorEl.classList.add('show')
+          }
+        }
+      })
+
+      if (isValid) {
+        // カスタム送信処理をトリガー
+        form.dispatchEvent(
+          new CustomEvent('validated-submit', { bubbles: true }),
+        )
+      } else if (firstErrorElement) {
+        // エラーあり → 最初のエラー要素にスクロールしてフォーカス
+        const formGroup = (firstErrorElement as HTMLElement).closest(
+          '.form-group',
+        )
+        if (formGroup) {
+          formGroup.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center',
+          })
+        }
+        ;(firstErrorElement as HTMLElement).focus()
+      }
+    })
+  })
+</script>
+
+<style is:global>
+  /* エラー時のスタイル */
+  .error-highlight {
+    border: 2px solid var(--color-error, #ff0000) !important;
+    background-color: #fff0f0 !important;
+  }
+
+  .error-text {
+    display: none;
+    color: var(--color-error, #ff0000);
+    font-size: 0.9em;
+    margin-top: 4px;
+  }
+
+  .error-text.show {
+    display: block;
+  }
+</style>

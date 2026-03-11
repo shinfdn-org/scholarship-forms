@@ -1,0 +1,1526 @@
+---
+import FormLayout from '@layouts/FormLayout.astro'
+// shared components
+import FormSection from '@components/shared/FormSection.astro'
+import SchoolSearch from '@components/shared/SchoolSearch.astro'
+import RandomizedCheckbox from '@components/shared/RandomizedCheckbox.astro'
+import TextareaWithCount from '@components/shared/TextareaWithCount.astro'
+import FormValidator from '@components/shared/FormValidator.astro'
+// survey-specific components
+import ConditionalSection from '@components/survey/ConditionalSection.astro'
+import DateDropdown from '@components/survey/DateDropdown.astro'
+import MultiCheckboxWithOther from '@components/survey/MultiCheckboxWithOther.astro'
+import MatrixQuestion from '@components/survey/MatrixQuestion.astro'
+import FieldSelection from '@components/survey/FieldSelection.astro'
+
+interface Props {
+  /** 奨学生かどうか */
+  isScholar: boolean
+  /** formrun の送信先 URL */
+  formAction: string
+}
+
+const { isScholar, formAction } = Astro.props
+
+// ========================================
+// データ定数
+// ========================================
+
+// 奨学金使途の選択肢（「その他」は hasOther で自動追加）
+const scholarshipUsageItems = [
+  '学費（定期代含む）',
+  '書籍代',
+  '大学受験に関わる模試、検定料',
+  '大学受験に関わる受験料、交通費、宿泊費',
+  'STEM系プログラム参加費・交通費や指導謝礼',
+  'OB訪問、科学館等、視察等の交通費・宿泊費（オープンキャンパス以外）',
+  '施設使用料/備品（PC関連以外）・材料代',
+  'PC,タブレット,モバイル機器,ソフトウェア購入,PC関連機器',
+  '塾代（通信教育含む）、英検、受験に関わらない検定',
+  'オープンキャンパス、大学見学',
+  '留学・語学',
+]
+
+// 奨学金影響の選択肢（排他選択は exclusiveItem で別途指定）
+const scholarshipImpactItems = [
+  '自分の理系進学が応援されていると感じた',
+  '親に自分の進みたい進路を応援してもらいやすくなった',
+  '先生に自分の進みたい進路を応援してもらいやすくなった',
+  'モノやサービスの購入、イベント参加費等に使用し、理系の進路について知ることができた',
+  '経済面の不安が解消・緩和された',
+  '奨学金を使って、苦手だった科目への対策ができるようになった',
+  '奨学金を使って、全体的な成績や学力が伸びた',
+  '受験料その他の受験に関わる費用（交通費・宿泊費等）に使用し、大学受験校を増やせた',
+  '文系への転向をしづらくなった',
+  '周りに相談するきっかけになった',
+  '自分の進路について考えるきっかけになった',
+]
+
+// イベント参加の選択肢（奨学生用）
+const eventItemsScholar = [
+  '奨学生向けのイベント（2025年7月オフライン開催、2024年6月,2025年6月オンライン開催）に1回以上参加',
+  '当財団主催のGirls Meet STEMのイベント（オフィスや大学等の現地開催）に1回以上参加',
+  '当財団主催のGirls Meet STEMのイベント（オンライン）に1回以上参加',
+  '上記のいずれかまたは全てに申し込みをしたが、参加できなかった',
+  '上記のいずれも申し込みもしておらず、全く参加しなかった',
+]
+
+// イベント参加の選択肢（非奨学生用）
+const eventItemsNonScholar = [
+  '当財団主催のGirls Meet STEMのイベント（オフィスや大学等の現地開催）に1回以上参加',
+  '当財団主催のGirls Meet STEMのイベント（オンライン）に1回以上参加',
+  '上記のいずれかまたは全てに申し込みをしたが、参加できなかった',
+  '上記のいずれも申し込みもしておらず、全く参加しなかった',
+]
+
+// 文理選択時期の選択肢
+const bunriTimingItems = [
+  '中学校以前',
+  '中学１年生',
+  '中学２年生',
+  '中学３年生',
+  '高校1年生の4～6月',
+  '高校1年生の7～9月',
+  '高校1年生の10～12月',
+  '高校1年生の1～3月',
+  '高校2年生の4～6月',
+  '高校2年生の7～9月',
+  '高校2年生の10～12月',
+  '高校2年生の1～3月',
+  '高校3年生の4～6月',
+  '高校3年生の7～9月',
+  '高校3年生の10～12月',
+  '覚えていない',
+]
+
+// 文理意識のマトリクス
+const bunriAwarenessRows = [
+  { label: '中3の4月', key: '中3の4月' },
+  { label: '高1の4月', key: '高1の4月' },
+  { label: '高2の4月', key: '高2の4月' },
+  { label: '高3の4月', key: '高3の4月' },
+]
+const bunriAwarenessColumns = [
+  '理系',
+  'どちらかといえば理系',
+  'どちらかといえば文系',
+  '文系',
+  '迷っていた・どちらでもない',
+]
+
+// 周囲の反応マトリクス
+const reactionRows = [
+  { label: '母親', key: '母親' },
+  { label: '父親', key: '父親' },
+  { label: '担任の先生', key: '担任の先生' },
+]
+const reactionColumns = [
+  'とても肯定的',
+  'まあまあ肯定的',
+  'あまり肯定的ではなかった',
+  '否定的だった',
+  '特に反応はない',
+  '文系を選択したのでわからない',
+]
+
+// 共通テスト科目
+const commonTestSubjects = [
+  '国語',
+  '数学(数ⅠA、数ⅡB、数ⅢC)',
+  '英語',
+  '理科(物理、化学、生物、地学)',
+  '社会(日本史、世界史、地理、現代社会、倫理、政治・経済)',
+  '情報',
+]
+
+// 得点率入力用のラベル（commonTestSubjects と同じ教科順）
+const scoreLabels = [
+  { label: '国語', name: '得点率_国語' },
+  { label: '数学ⅠA・数学ⅡB', name: '得点率_数学' },
+  { label: '英語', name: '得点率_英語' },
+  { label: '理科', name: '得点率_理科' },
+  { label: '社会', name: '得点率_社会' },
+  { label: '情報', name: '得点率_情報' },
+]
+---
+
+<FormLayout title="STEM(理系)女子奨学助成金 フォローアップ調査 2026">
+  <main>
+    <div class="top-title">
+      <h1>STEM(理系)女子奨学助成金</h1>
+      <h2>フォローアップ調査</h2>
+
+      <div class="attention">
+        <p>
+          2023年度,2024年度に山田進太郎D&I財団STEM(理系)女子奨学助成金へ<strong
+            >応募された皆様</strong
+          >に、フォローアップ調査のご協力をお願いいたします。
+        </p>
+        {
+          !isScholar && (
+            <p>
+              <strong>奨学生に選ばれなかった方</strong>
+              も調査の対象となりますので、どうかご協力を宜しくお願い致します。ご回答いただいた方
+              <strong>全員</strong>に謝金として、
+              <strong>1,000円分のアマゾンギフト券</strong>
+              をプレゼントさせて頂きます。
+            </p>
+          )
+        }
+        <p>
+          本調査は、STEM（理系）女子奨学助成金の運営主体である当財団が実施するものであり、慶應義塾大学（総合政策学部教授・研究顧問
+          中室牧子）より専門的な助言を受けながら、奨学助成金へ応募された皆様の進路等を調査し、今後の助成金運営の改善および学術研究に役立てることを目的としています。
+        </p>
+        <p>
+          15分程度お時間を頂き、以下の注意事項を読んだ上で、下記のフォローアップ調査にご協力いただけますと幸いです。
+        </p>
+      </div>
+
+      <hr />
+
+      <div class="attention">
+        <p><strong>注意点</strong></p>
+        <p>
+          回答は任意で、<strong
+            >答えたくない質問には答える必要はありません</strong
+          >。また回答にあたり、応募者ご自身の判断と考えで行っていただきたくお願い申し上げます。保護者に関する質問について、保護者の方に確認することは可能ですが、それ以外の質問内容についてご家庭で話し合ったり、<strong
+            >保護者の方が代わりに回答されることは、ご遠慮ください。</strong
+          >
+        </p>
+      </div>
+
+      <hr />
+
+      <div class="attention">
+        <p><strong>個人情報とデータの取り扱い</strong></p>
+        <p>
+          皆様からいただいたデータにつきましては、山田進太郎D&I財団がプライバシーポリシー（<a
+            href="https://www.shinfdn.org/privacy"
+            target="_blank"
+            rel="noopener">https://www.shinfdn.org/privacy</a
+          >）に基づき責任を持って管理します。データの保管には万全を期し外部へは漏洩しません。収集したデータは今後の助成金運営の改善および学術研究に使用します。慶應義塾大学が特定の個人を識別できる情報にアクセスすることはありません。取得したデータは、研究目的以外には使用しません。専門学会、学術専門誌、学内研究会等を通じて研究発表する際には、個人を特定可能な情報は削除して公表・開示します。慶應義塾大学が提供を受けたデータは、慶應義塾大学が定めた「研究資料等の保存に関するガイドライン」に基づき保存・廃棄します。
+        </p>
+        <p>
+          また、一度、回答に同意した後でも、いつでも同意を取り消すことができ、それによる不利益はありません。それまでに得られたデータや解析結果は山田進太郎D&I財団が破棄いたします。但し、取り消しを請求された時点で公表済みの解析結果がある場合は、このデータを破棄できませんのでご承知おきください。本調査に関する問い合わせは山田進太郎D&I財団までお願いします。
+        </p>
+        <p>
+          本調査についての問い合わせ先<br />
+          <a
+            href="https://www.shinfdn.org/contact"
+            target="_blank"
+            rel="noopener">https://www.shinfdn.org/contact</a
+          >
+        </p>
+      </div>
+
+      <hr />
+
+      <div class="attention">
+        <p>
+          ページを再読み込みすると、記入済みの内容が消えてしまいます。<br />
+          ご回答完了まで<strong
+            >ページを再読み込みされないよう、ご注意ください</strong
+          >。
+        </p>
+      </div>
+
+      <hr />
+    </div>
+
+    <form
+      id="validatedForm"
+      class="below-form formrun"
+      action={formAction}
+      data-is-scholar={isScholar}
+      method="post"
+    >
+      <!-- ========================================== -->
+      <!-- 同意書 -->
+      <!-- ========================================== -->
+      <div class="section-header">
+        <strong>同意書</strong>
+      </div>
+
+      <FormSection
+        label="私は研究の内容を理解し、フォローアップ調査に参加、分析を実施することを"
+        required={true}
+        errorMessage="選択してください"
+        errorId="consent-error"
+      >
+        <div class="radio-group-buttons">
+          <label class="select-button">
+            <input
+              type="radio"
+              id="consent-yes"
+              name="同意"
+              value="承諾します"
+              data-required="true"
+            />
+            <span>承諾します</span>
+          </label>
+          <label class="select-button">
+            <input
+              type="radio"
+              id="consent-no"
+              name="同意"
+              value="拒否します"
+            />
+            <span>拒否します</span>
+          </label>
+        </div>
+      </FormSection>
+
+      <!-- 同意時のみ表示 -->
+      <ConditionalSection
+        triggerName="同意"
+        showWhen="承諾します"
+        id="consent-section"
+      >
+        <!-- ========================================== -->
+        <!-- 高校3年生確認 -->
+        <!-- ========================================== -->
+        <MultiCheckboxWithOther
+          name="高校3年生確認"
+          items={['はい、高校3年生です', 'いいえ']}
+          label="あなたは2026年3月時点で、高校3年生ですか？この調査は、2025年度に高校3年生の皆さんを対象にしています。他の方は、本調査にお答えいただかないようお願いいたします。"
+          required={true}
+          maxSelect={1}
+          twoColumn={true}
+        />
+
+        <!-- ========================================== -->
+        <!-- 基本情報セクション -->
+        <!-- ========================================== -->
+        <div class="form-group">
+          <label class="form-label">
+            あなたの氏名やメールアドレス、生年月日、卒業高校名を教えてください。{
+              !isScholar && (
+                <span>
+                  内容に間違いがあると、回答謝礼をお送りできない可能性があるため、入力ミスには気をつけてください。
+                </span>
+              )
+            }
+            <span class="required-badge">必須</span>
+          </label>
+        </div>
+
+        <FormSection
+          label="名前"
+          required={true}
+          errorMessage="入力してください"
+          errorId="name-error"
+        >
+          <div class="form-inline-name">
+            <div>
+              <label for="lastName">姓</label>
+              <input
+                type="text"
+                id="lastName"
+                name="姓"
+                placeholder="山田"
+                data-conditional-required="true"
+              />
+            </div>
+            <div>
+              <label for="firstName">名</label>
+              <input
+                type="text"
+                id="firstName"
+                name="名"
+                placeholder="葵"
+                data-conditional-required="true"
+              />
+            </div>
+          </div>
+        </FormSection>
+
+        <FormSection
+          label="メールアドレス"
+          required={true}
+          errorMessage="有効なメールアドレスを入力してください"
+          errorId="email-error"
+        >
+          <input
+            type="email"
+            id="email"
+            name="メールアドレス"
+            placeholder="mail@example.com"
+            class="form-control"
+            data-conditional-required="true"
+          />
+        </FormSection>
+
+        <DateDropdown
+          name="生年月日"
+          label="生年月日"
+          required={true}
+          sinceYear={2005}
+          untilYear={2011}
+          defaultYear={2007}
+        />
+
+        <SchoolSearch
+          codeName="学校コード"
+          schoolName="学校名"
+          required={true}
+        />
+
+        <!-- ========================================== -->
+        <!-- 奨学生のみ対象 -->
+        <!-- ========================================== -->
+        {
+          isScholar && (
+            <>
+              <hr />
+              <div class="section-header">
+                <strong>
+                  奨学助成金や、当財団のイベントへの参加についてお聞きします。（奨学生の方のみ）
+                </strong>
+              </div>
+
+              <MultiCheckboxWithOther
+                name="奨学金の使途"
+                items={scholarshipUsageItems}
+                hasOther={true}
+                shuffle={true}
+                maxSelect={3}
+                label="当財団の奨学金の主だった使途を教えてください（最大3個まで複数回答可）"
+                required={false}
+              />
+
+              <RandomizedCheckbox
+                name="奨学金の影響[]"
+                items={scholarshipImpactItems}
+                exclusiveItem="上記の中に当てはまるものは特に無い（自由回答）"
+                exclusiveHasText={true}
+                exclusiveTextName="奨学金の影響_自由記述"
+                exclusiveTextPlaceholder="自由記述"
+                maxSelect={3}
+                required={false}
+                label="奨学金があったことでどのような影響がありましたか。影響が大きかったものを、最大3個まで選んでください"
+              />
+
+              <MultiCheckboxWithOther
+                name="イベント参加_奨学生"
+                items={eventItemsScholar}
+                label="あなたが参加したイベントについてあてはまるものすべてを選択してください。"
+                required={false}
+              />
+            </>
+          )
+        }
+
+        <!-- ========================================== -->
+        <!-- 非奨学生のみ対象 -->
+        <!-- ========================================== -->
+        {
+          !isScholar && (
+            <>
+              <hr />
+              <div class="section-header">
+                <strong>当財団のイベントへの参加についてお聞きします。</strong>
+              </div>
+
+              <MultiCheckboxWithOther
+                name="イベント参加"
+                items={eventItemsNonScholar}
+                label="あなたが参加したイベントについてあてはまるものすべてを選択してください。"
+                required={false}
+              />
+            </>
+          )
+        }
+
+        <!-- ========================================== -->
+        <!-- 文理選択について（全員） -->
+        <!-- ========================================== -->
+        <hr />
+        <div class="section-header">
+          <strong>あなたの文理選択についてお聞きします。</strong>
+        </div>
+
+        <MultiCheckboxWithOther
+          name="文理選択時期"
+          items={bunriTimingItems}
+          label="高校での文系・理系（クラスやコース）の選択について、あなたが「文系にしよう」「理系にしよう」と心の中で決めたのはいつ頃ですか。（中高一貫で中学時に文理クラスを決定した場合は、中学での文系・理系の選択を心のなかで決めたのがいつ頃か教えて下さい）"
+          required={false}
+          maxSelect={1}
+        />
+
+        <FormSection
+          label="奨学金応募時について、あなた自身は自分のことを文系だと思っていたか、理系だと思っていたか、どちらですか？"
+          required={false}
+          errorId="bunri-self-error"
+        >
+          <div class="radio-group-vertical">
+            {
+              [
+                '理系',
+                'どちらかといえば理系',
+                'どちらかといえば文系',
+                '文系',
+                '迷っていた・どちらでもない',
+                'その他',
+              ].map((item) => (
+                <label class="select-button">
+                  <input
+                    type="radio"
+                    name="応募時の文理自己認識"
+                    value={item}
+                  />
+                  <span>{item}</span>
+                </label>
+              ))
+            }
+          </div>
+          <div
+            id="bunri-self-other-wrapper"
+            style="display: none; margin-top: 0.5rem;"
+          >
+            <input
+              type="text"
+              name="応募時の文理自己認識_その他"
+              placeholder="詳細を入力してください"
+              class="form-control"
+            />
+          </div>
+        </FormSection>
+
+        <MatrixQuestion
+          name="文理意識の変化"
+          rows={bunriAwarenessRows}
+          columns={bunriAwarenessColumns}
+          label="当時、あなた自身は自分のことを文系だと思っていたか、理系だと思っていたか、どちらですか？"
+          required={false}
+        />
+
+        <MatrixQuestion
+          name="理系進学への周囲の反応"
+          rows={reactionRows}
+          columns={reactionColumns}
+          label="あなたが文理を選択する際に、理系進学に対する母親、父親、担任の先生の反応はそれぞれどうでしたか？"
+          required={false}
+        />
+
+        <!-- ========================================== -->
+        <!-- 進路について（全員） -->
+        <!-- ========================================== -->
+        <hr />
+        <div class="section-header">
+          <strong>あなたの進路についてお聞きします。</strong>
+        </div>
+
+        <FormSection
+          label="高校卒業後の進路選択について当てはまるものを選択してください。"
+          required={false}
+          errorId="career-path-error"
+        >
+          <div class="radio-group-vertical">
+            {
+              [
+                '日本国内の大学へ進学する',
+                '海外の大学へ進学する予定である',
+                '専門学校・職業訓練学校へ進学する予定である',
+                '浪人・ギャップイヤーを予定している',
+                'まだ決まっていない',
+                'その他',
+              ].map((item) => (
+                <label class="select-button">
+                  <input type="radio" name="卒業後の進路" value={item} />
+                  <span>{item}</span>
+                </label>
+              ))
+            }
+          </div>
+        </FormSection>
+
+        <!-- 国内大学進学の場合 -->
+        <ConditionalSection
+          triggerName="卒業後の進路"
+          showWhen="日本国内の大学へ進学する"
+          id="domestic-uni-section"
+        >
+          <div class="sub-section">
+            <FieldSelection
+              name="国内大学_入学分野"
+              label="あなたが入学する大学・学部で学ぶ予定の分野は、どちらに該当しますか？※学部名ではなく、ご自身が学ぶ内容にあわせて選んでください"
+              description="回答内容によって奨学金の返還を求めることは一切ありませんので、現在の状況をそのままご回答ください。"
+              mode="single"
+              required={false}
+            />
+
+            <FieldSelection
+              name="国内大学_合格分野"
+              label="あなたが合格した大学・学部の分野は、どちらに該当しますか？（複数選択可）"
+              mode="multiple"
+              required={false}
+            />
+
+            <FieldSelection
+              name="国内大学_受験分野"
+              label="あなたが受験した大学・学部の分野は、どちらに該当しますか？（複数選択可）"
+              mode="multiple"
+              required={false}
+            />
+          </div>
+        </ConditionalSection>
+
+        <!-- 海外大学進学の場合 -->
+        <ConditionalSection
+          triggerName="卒業後の進路"
+          showWhen="海外の大学へ進学する予定である"
+          id="overseas-uni-section"
+        >
+          <div class="sub-section">
+            <FieldSelection
+              name="海外大学_入学分野"
+              label="あなたが入学する大学・学部で学ぶ予定の分野は、どちらに該当しますか？※学部名ではなく、ご自身が学ぶ内容にあわせて選んでください"
+              description="回答内容によって奨学金の返還を求めることは一切ありませんので、現在の状況をそのままご回答ください。"
+              mode="single"
+              required={false}
+            />
+
+            <FieldSelection
+              name="海外大学_合格分野"
+              label="あなたが合格した大学・学部の分野は、どちらに該当しますか？（複数選択可）"
+              mode="multiple"
+              required={false}
+            />
+
+            <FieldSelection
+              name="海外大学_受験分野"
+              label="あなたが受験した大学・学部の分野は、どちらに該当しますか？（複数選択可）"
+              mode="multiple"
+              required={false}
+            />
+          </div>
+        </ConditionalSection>
+
+        <!-- 専門学校の場合 -->
+        <ConditionalSection
+          triggerName="卒業後の進路"
+          showWhen="専門学校・職業訓練学校へ進学する予定である"
+          id="vocational-section"
+        >
+          <div class="sub-section">
+            <TextareaWithCount
+              name="進路詳細_専門学校"
+              label="進路について、「専門学校・職業訓練学校進学」の詳細を入力してください。"
+              placeholder="詳細を入力してください"
+              required={false}
+              targetLength={50}
+              maxLength={500}
+            />
+          </div>
+        </ConditionalSection>
+
+        <!-- 浪人の場合 -->
+        <ConditionalSection
+          triggerName="卒業後の進路"
+          showWhen="浪人・ギャップイヤーを予定している"
+          id="gap-year-section"
+        >
+          <div class="sub-section">
+            <TextareaWithCount
+              name="進路詳細_浪人"
+              label="進路について、「浪人または、ギャップイヤー」の詳細を入力してください。"
+              placeholder="詳細を入力してください"
+              required={false}
+              targetLength={50}
+              maxLength={500}
+            />
+          </div>
+        </ConditionalSection>
+
+        <!-- まだ決まっていない場合 -->
+        <ConditionalSection
+          triggerName="卒業後の進路"
+          showWhen="まだ決まっていない"
+          id="undecided-section"
+        >
+          <div class="sub-section">
+            <TextareaWithCount
+              name="進路詳細_未定"
+              label="進路について、「まだ決まっていない」の詳細を入力してください。"
+              placeholder="詳細を入力してください"
+              required={false}
+              targetLength={50}
+              maxLength={500}
+            />
+          </div>
+        </ConditionalSection>
+
+        <!-- その他の場合 -->
+        <ConditionalSection
+          triggerName="卒業後の進路"
+          showWhen="その他"
+          id="career-other-section"
+        >
+          <div class="sub-section">
+            <TextareaWithCount
+              name="進路詳細_その他"
+              label="進路について、「その他」の詳細を入力してください。"
+              placeholder="詳細を入力してください"
+              required={false}
+              targetLength={50}
+              maxLength={500}
+            />
+          </div>
+        </ConditionalSection>
+
+        <!-- ========================================== -->
+        <!-- 費用・共通テスト（全員） -->
+        <!-- ========================================== -->
+        <hr />
+        <div class="section-header">
+          <strong>受験費用と共通テストについてお聞きします。</strong>
+        </div>
+
+        <FormSection
+          label="今年の受験にかかった費用の概算を教えてください（今年1年間）。こちらの費用には、例えば高校の学費、書籍費、塾・プログラム参加費や指導謝礼、視察等の交通費・宿泊費、施設使用料、備品・材料代などが含まれます（千円単位は切り捨て）。"
+          required={false}
+          errorId="exam-cost-error"
+        >
+          <div class="cost-input-wrapper">
+            <span>約</span>
+            <input
+              type="number"
+              name="受験費用"
+              min="0"
+              class="form-control cost-input"
+              placeholder="0"
+            />
+            <span>万円</span>
+          </div>
+        </FormSection>
+
+        <FormSection
+          label="あなたは今年度の共通テストを受験しましたか？"
+          required={false}
+          errorId="common-test-error"
+        >
+          <div class="radio-group-buttons">
+            <label class="select-button">
+              <input type="radio" name="共通テスト受験" value="はい" />
+              <span>はい</span>
+            </label>
+            <label class="select-button">
+              <input type="radio" name="共通テスト受験" value="いいえ" />
+              <span>いいえ</span>
+            </label>
+          </div>
+        </FormSection>
+
+        <ConditionalSection
+          triggerName="共通テスト受験"
+          showWhen="はい"
+          id="common-test-section"
+        >
+          <div class="sub-section">
+            <MultiCheckboxWithOther
+              name="共通テスト受験科目"
+              items={commonTestSubjects}
+              label="共通テストで受験した科目を教えてください。複数ある場合は、全てを選んでください。"
+              required={false}
+            />
+
+            <FormSection
+              label="受験した各科目の得点率を教えてください。同じ科目で2教科以上受験した場合は科目の得点率の平均値を記述してください。"
+              required={false}
+              errorId="scores-error"
+            >
+              <div class="score-inputs">
+                {
+                  scoreLabels.map((score) => (
+                    <div class="score-input-row">
+                      <label>{score.label}</label>
+                      <div class="score-input-wrapper">
+                        <input
+                          type="number"
+                          name={score.name}
+                          min="0"
+                          max="100"
+                          class="form-control score-input"
+                          placeholder="0"
+                        />
+                        <span>%</span>
+                      </div>
+                    </div>
+                  ))
+                }
+              </div>
+            </FormSection>
+          </div>
+        </ConditionalSection>
+
+        <!-- ========================================== -->
+        <!-- クラス・周囲（全員） -->
+        <!-- ========================================== -->
+        <hr />
+        <div class="section-header">
+          <strong>最後にあなたご自身やご家庭のことについてお聞きします。</strong
+          >
+        </div>
+
+        <FormSection
+          label="高校3年生のとき、あなたが所属していたクラスはどのようなクラスでしたか？"
+          required={false}
+          errorId="class-type-error"
+        >
+          <div class="radio-group-vertical">
+            {
+              [
+                '理系クラス',
+                '文系クラス',
+                '文理融合クラス',
+                'いずれでもない',
+              ].map((item) => (
+                <label class="select-button">
+                  <input type="radio" name="高3のクラス種別" value={item} />
+                  <span>{item}</span>
+                </label>
+              ))
+            }
+          </div>
+        </FormSection>
+
+        <FormSection
+          label="あなたの高3でのクラスについて、女子生徒のおおまかな比率を教えて下さい"
+          required={false}
+          errorId="class-gender-error"
+        >
+          <div class="radio-group-vertical">
+            {
+              [
+                '女子生徒が多い（女子生徒がクラスの約75%以上）',
+                '女子生徒がやや多い（女子生徒がクラスの約50~75%）',
+                '男女半々ほど（女子生徒と男子生徒がそれぞれ約50%）',
+                '女子生徒がやや少ない（女子生徒がクラスの約25~50%）',
+                '女子生徒が少ない（女子生徒がクラスの約25%以下）',
+              ].map((item) => (
+                <label class="select-button">
+                  <input type="radio" name="クラスの女子比率" value={item} />
+                  <span>{item}</span>
+                </label>
+              ))
+            }
+          </div>
+        </FormSection>
+
+        <FormSection
+          label="あなたの高3での学年の女子生徒について、理系と文系の大まかな比率を教えてください。"
+          required={false}
+          errorId="grade-ratio-error"
+        >
+          <div class="radio-group-vertical">
+            {
+              [
+                '理系が多い（学年女子全体の約75％以上が理系）',
+                '理系がやや多い（学年女子全体の約50％～75％が理系）',
+                '文系と理系がほぼ同じ（学年女子全体の約半分が理系）',
+                '文系がやや多い（学年女子全体の約50％～75％が文系）',
+                '文系が多い（学年女子全体の約75％以上が文系）',
+                'わからない',
+              ].map((item) => (
+                <label class="select-button">
+                  <input type="radio" name="学年の女子文理比率" value={item} />
+                  <span>{item}</span>
+                </label>
+              ))
+            }
+          </div>
+        </FormSection>
+
+        <FormSection
+          label="あなたが高校1年生の時、まわりの女子生徒（友達、クラスメイトなど）について、文理志望のおおまかな比率は以下のいずれだったと思いますか。"
+          required={false}
+          errorId="surrounding-ratio-error"
+        >
+          <div class="radio-group-vertical">
+            {
+              [
+                '理系が多い（理系の生徒が約75％以上）',
+                '理系がやや多い（理系の生徒が約50%～75％）',
+                '文系と理系がほぼ同じ（理系と文系の生徒がそれぞれ約50％）',
+                '文系がやや多い（文系の生徒が約50％～75％）',
+                '文系が多い（文系の生徒が約75％以上）',
+                'わからない',
+              ].map((item) => (
+                <label class="select-button">
+                  <input
+                    type="radio"
+                    name="高1時の周囲の文理比率"
+                    value={item}
+                  />
+                  <span>{item}</span>
+                </label>
+              ))
+            }
+          </div>
+        </FormSection>
+
+        <!-- ========================================== -->
+        <!-- 将来・家庭（全員） -->
+        <!-- ========================================== -->
+        <FormSection
+          label="あなたは30歳くらいになったら、どんな職業についていると思いますか？職業の名称を入力してください。"
+          required={false}
+          errorId="future-job-error"
+        >
+          <input
+            type="text"
+            name="将来の職業"
+            class="form-control"
+            placeholder="職業名を入力してください"
+          />
+        </FormSection>
+
+        <TextareaWithCount
+          name="理系を諦めた経験"
+          label="あなたには理系を選択しよう、あるいはしたいと思っていたが、それをあきらめる・あるいはあきらめそうになることはありましたか？もしあれば、そのエピソードを可能な範囲で聞かせてください。"
+          placeholder="ご自由にお書きください"
+          required={false}
+          targetLength={100}
+          maxLength={1000}
+        />
+
+        <FormSection
+          label="お母さんやお父さん（もしくはそれに相当する人）の主な職業は何ですか？"
+          required={false}
+          errorId="parent-job-error"
+        >
+          <p class="parent-note">
+            今、働いていない場合は、最後についていた職業について答えてください。「主な職業」とは、お母さんやお父さんが二つ以上の職業を持つ場合、最も多くの時間を費やしている職業を指します。該当する人がいない場合は、記述する必要はございません。
+          </p>
+          <div class="parent-inputs">
+            <div>
+              <label>お母さん（もしくはそれに相当する人）の主な職業</label>
+              <input
+                type="text"
+                name="母親の職業"
+                class="form-control"
+                placeholder="例：教師、調理係、販売員"
+              />
+            </div>
+            <div>
+              <label>お父さん（もしくはそれに相当する人）の主な職業</label>
+              <input
+                type="text"
+                name="父親の職業"
+                class="form-control"
+                placeholder="例：教師、調理係、販売員"
+              />
+            </div>
+          </div>
+        </FormSection>
+
+        <FormSection
+          label="お母さんやお父さん（またはそれに該当する人）の大学や専門学校などでの専攻について、次のうち当てはまるものを選んでください。文系と理系の学問の定義は次の通りです。"
+          required={false}
+          errorId="parent-major-error"
+        >
+          <p class="parent-note">
+            文系:
+            人文科学（言語、文学、芸術、哲学など）と社会科学（歴史、政治学、経済学、社会学、法学など）
+          </p>
+          <p class="parent-note">
+            理系：自然科学（物理学、化学、生物学など）と応用科学（工学、医学、情報科学など）
+          </p>
+          <p class="parent-note">
+            該当する人がいない場合は、記述する必要はございません。
+          </p>
+          <div class="parent-inputs">
+            <div>
+              <label>お母さん（もしくはそれに相当する人）</label>
+              <div class="radio-group-vertical">
+                {
+                  [
+                    '文系の学問を専攻した',
+                    '理系の学問を専攻した',
+                    '大学や専門学校などを卒業していない',
+                    'わからない、または該当する人がいない',
+                  ].map((item) => (
+                    <label class="select-button">
+                      <input type="radio" name="母親の専攻" value={item} />
+                      <span>{item}</span>
+                    </label>
+                  ))
+                }
+              </div>
+            </div>
+            <div>
+              <label>お父さん（もしくはそれに相当する人）</label>
+              <div class="radio-group-vertical">
+                {
+                  [
+                    '文系の学問を専攻した',
+                    '理系の学問を専攻した',
+                    '大学や専門学校などを卒業していない',
+                    'わからない、または該当する人がいない',
+                  ].map((item) => (
+                    <label class="select-button">
+                      <input type="radio" name="父親の専攻" value={item} />
+                      <span>{item}</span>
+                    </label>
+                  ))
+                }
+              </div>
+            </div>
+          </div>
+        </FormSection>
+
+        <FormSection
+          label="あなたには兄弟姉妹が何人いますか？いない場合は「0」と記載ください。"
+          required={false}
+          errorId="siblings-error"
+        >
+          <div class="number-input-grid">
+            {
+              [
+                { label: '兄', name: '兄弟姉妹_兄' },
+                { label: '弟', name: '兄弟姉妹_弟' },
+                { label: '姉', name: '兄弟姉妹_姉' },
+                { label: '妹', name: '兄弟姉妹_妹' },
+              ].map((item) => (
+                <div class="number-input-item">
+                  <label>{item.label}</label>
+                  <div class="number-input-wrapper">
+                    <input
+                      type="number"
+                      name={item.name}
+                      min="0"
+                      max="20"
+                      class="form-control number-input"
+                      placeholder="0"
+                    />
+                    <span>人</span>
+                  </div>
+                </div>
+              ))
+            }
+          </div>
+        </FormSection>
+
+        <FormSection
+          label="文系もしくは理系の大学の学部や専門学校に進んだ兄や姉は何人いますか？いない場合は「0」と記載ください。"
+          required={false}
+          errorId="siblings-path-error"
+        >
+          <div class="number-input-grid">
+            {
+              [
+                { label: '文系進学：兄', name: '兄姉の進路_文系兄' },
+                { label: '文系進学：姉', name: '兄姉の進路_文系姉' },
+                { label: '理系進学：兄', name: '兄姉の進路_理系兄' },
+                { label: '理系進学：姉', name: '兄姉の進路_理系姉' },
+              ].map((item) => (
+                <div class="number-input-item">
+                  <label>{item.label}</label>
+                  <div class="number-input-wrapper">
+                    <input
+                      type="number"
+                      name={item.name}
+                      min="0"
+                      max="20"
+                      class="form-control number-input"
+                      placeholder="0"
+                    />
+                    <span>人</span>
+                  </div>
+                </div>
+              ))
+            }
+          </div>
+        </FormSection>
+
+        <FormSection
+          label="あなたの家には本が何冊ありますか。本棚1メートルにつき約40冊の本が入るとします。雑誌、新聞、教科書は数に含めないでください。"
+          required={false}
+          errorId="books-error"
+        >
+          <div class="radio-group-vertical">
+            {
+              [
+                '本はない',
+                '1～10冊',
+                '11～25冊',
+                '26～100冊',
+                '101～200冊',
+                '201～500冊',
+                '501冊以上',
+              ].map((item) => (
+                <label class="select-button">
+                  <input type="radio" name="家の本の数" value={item} />
+                  <span>{item}</span>
+                </label>
+              ))
+            }
+          </div>
+        </FormSection>
+
+        <!-- ========================================== -->
+        <!-- 奨学生のみ — 協力依頼 -->
+        <!-- ========================================== -->
+        {
+          isScholar && (
+            <>
+              <hr />
+              <div class="section-header">
+                <strong>
+                  今後の奨学金運営へのご協力についてお伺いします。
+                </strong>
+              </div>
+
+              <FormSection
+                label="この奨学金は、「もし知っていたら応募できたのに…」という生徒さんを少しでも減らしたい、という思いで運営しています。そのため、これから進路を考える後輩たちに向けて、体験を共有してくださる方のお力をお借りできればと考えています。ご負担のない範囲で、以下の中からご協力可能なものをお選びください。（複数選択可）"
+                required={true}
+                errorId="cooperation-error"
+              >
+                <div class="cooperation-list">
+                  <div class="cooperation-item">
+                    <label class="select-button">
+                      <input
+                        type="checkbox"
+                        name="協力[]"
+                        value="school_visit"
+                        data-required="true"
+                      />
+                      <div>
+                        <span>中高生に受験や進学についてお話しする</span>
+                        <ul class="cooperation-desc">
+                          <li>
+                            学校に訪問いただいて、中高生向けに受験・進学の体験について30分〜1時間程度お話しいただくものです。
+                          </li>
+                          <li>
+                            ご協力の意思をお選びいただいた場合は、財団から改めて登録のご依頼をお送りいたします。
+                          </li>
+                        </ul>
+                      </div>
+                    </label>
+                  </div>
+                  <div class="cooperation-item">
+                    <label class="select-button">
+                      <input
+                        type="checkbox"
+                        name="協力[]"
+                        value="interview"
+                        data-required="true"
+                      />
+                      <div>
+                        <span>
+                          財団公式サイト・SNSに掲載する「体験談インタビュー」に協力する
+                        </span>
+                        <ul class="cooperation-desc">
+                          <li>
+                            理系学部へ進学した奨学生の先輩として、体験談のインタビュー（オンライン、30分程度）にご協力いただくものです。
+                          </li>
+                          <li>
+                            様々な分野へ進む方へ伺いたく、ご依頼が決定した方へのみ詳細と日程調整のご案内メールを送付します。「お写真、所属大学学部、お名前、インタビュー内容」が財団公式サイトや公式SNSに記載されます。
+                          </li>
+                        </ul>
+                      </div>
+                    </label>
+                  </div>
+                  <div class="cooperation-item">
+                    <label class="select-button">
+                      <input
+                        type="checkbox"
+                        name="協力[]"
+                        value="media"
+                        data-required="true"
+                      />
+                      <div>
+                        <span>
+                          奨学金募集に関連したメディア取材（新聞・Web等）のインタビューに協力する
+                        </span>
+                        <ul class="cooperation-desc">
+                          <li>
+                            奨学金を受給した経験や進路選択について、メディアのインタビューにご協力いただくものです。
+                          </li>
+                          <li>
+                            すべてのインタビューをお受けいただく必要はありません。メディアからインタビュー依頼があった際に、都度ご相談のメールをお送りさせていただきます。その都度、ご自身にて協力可否をご判断いただけます。
+                          </li>
+                        </ul>
+                      </div>
+                    </label>
+                  </div>
+                  <div class="cooperation-item">
+                    <label class="select-button">
+                      <input
+                        type="checkbox"
+                        name="協力[]"
+                        value="none"
+                        data-required="true"
+                      />
+                      <span>今回は、いずれも協力できない</span>
+                    </label>
+                  </div>
+                </div>
+              </FormSection>
+            </>
+          )
+        }
+
+        <!-- ========================================== -->
+        <!-- 非奨学生のみ — 送信確認 -->
+        <!-- ========================================== -->
+        {
+          !isScholar && (
+            <>
+              <hr />
+              <FormSection
+                label="質問は以上です。ご協力ありがとうございました。"
+                required={true}
+                errorId="confirm-submit-error"
+                errorMessage="チェックしてください"
+              >
+                <div class="radio-group-vertical">
+                  <label class="select-button">
+                    <input
+                      type="checkbox"
+                      name="送信確認"
+                      value="はい"
+                      data-conditional-required="true"
+                    />
+                    <span>上記の内容で送信します。</span>
+                  </label>
+                </div>
+              </FormSection>
+            </>
+          )
+        }
+      </ConditionalSection>
+
+      <!-- 応募年度（URL パラメータから自動入力） -->
+      <input type="hidden" id="応募年度" name="応募年度" value="" />
+
+      <div
+        class="_formrun_gotcha"
+        style="position: absolute !important; height: 1px; width: 1px; overflow: hidden;"
+      >
+        <label for="_formrun_gotcha"
+          >If you are a human, ignore this field</label
+        >
+        <input
+          type="text"
+          name="_formrun_gotcha"
+          id="_formrun_gotcha"
+          tabindex="-1"
+        />
+      </div>
+
+      <!-- ========================================== -->
+      <!-- 送信ボタン -->
+      <!-- ========================================== -->
+      <div class="form-group">
+        <button type="submit" id="submitBtn">回答を送信する</button>
+      </div>
+    </form>
+
+    <FormValidator formId="validatedForm" />
+  </main>
+</FormLayout>
+
+<style>
+  .section-header {
+    margin: 2rem 0 1rem;
+    font-size: 1.1rem;
+  }
+
+  .section-header strong {
+    font-size: 1.2rem;
+  }
+
+  .radio-group-buttons {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .radio-group-buttons .select-button,
+  .radio-group-vertical .select-button {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1.5rem;
+    border: 1px solid var(--color-border, #d9d9d9);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    background-color: white;
+  }
+
+  .radio-group-buttons .select-button:hover,
+  .radio-group-vertical .select-button:hover {
+    border-color: var(--color-primary, #00bcd4);
+  }
+
+  .radio-group-buttons .select-button:has(input:checked),
+  .radio-group-vertical .select-button:has(input:checked) {
+    border-color: var(--color-primary, #00bcd4);
+    background-color: rgba(0, 188, 212, 0.05);
+  }
+
+  .radio-group-buttons input,
+  .radio-group-vertical input {
+    margin-right: 0.5rem;
+  }
+
+  .radio-group-vertical {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .sub-section {
+    background-color: #f9f9f9;
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin: 1rem 0;
+  }
+
+  .sub-description {
+    margin-bottom: 1rem;
+    color: #666;
+  }
+
+  .form-control {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--color-border, #d9d9d9);
+    border-radius: 4px;
+    font-size: 1rem;
+  }
+
+  .form-control:focus {
+    outline: none;
+    border-color: var(--color-primary, #00bcd4);
+  }
+
+  /* 費用入力 */
+  .cost-input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .cost-input {
+    width: 120px;
+  }
+
+  /* 得点率入力 */
+  .score-inputs {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .score-input-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .score-input-row label {
+    min-width: 140px;
+    font-size: 0.95rem;
+  }
+
+  .score-input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .score-input {
+    width: 80px;
+  }
+
+  /* 数値入力グリッド（兄弟姉妹など） */
+  .number-input-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  .number-input-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .number-input-item label {
+    font-size: 0.9rem;
+  }
+
+  .number-input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .number-input {
+    width: 80px;
+  }
+
+  /* 親の情報 */
+  .parent-note {
+    font-size: 1rem;
+    color: var(--color-text, #333);
+    margin-bottom: 0.5rem;
+    line-height: 1.5;
+  }
+
+  .parent-inputs {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .parent-inputs > div > label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+  }
+
+  /* 協力依頼 */
+  .cooperation-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .cooperation-item .select-button {
+    display: flex;
+    align-items: flex-start;
+    padding: 1rem 1.25rem;
+    border: 1px solid var(--color-border, #d9d9d9);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    background-color: white;
+  }
+
+  .cooperation-item .select-button:hover {
+    border-color: var(--color-primary, #009688);
+  }
+
+  .cooperation-item .select-button:has(input:checked) {
+    border-color: var(--color-primary, #009688);
+    background-color: rgba(0, 150, 136, 0.05);
+  }
+
+  .cooperation-item .select-button input {
+    margin-right: 0.75rem;
+    margin-top: 0.2rem;
+    flex-shrink: 0;
+  }
+
+  .cooperation-item .select-button span {
+    font-weight: bold;
+    font-size: 0.95rem;
+  }
+
+  .cooperation-desc {
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+    color: #666;
+    line-height: 1.5;
+    padding-left: 1.2em;
+    margin-bottom: 0;
+  }
+
+  .cooperation-desc li {
+    margin-bottom: 0.25rem;
+  }
+
+  @media (max-width: 600px) {
+    .number-input-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .score-input-row {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.25rem;
+    }
+
+    .score-input-row label {
+      min-width: auto;
+    }
+  }
+</style>
+
+<script>
+  const form = document.getElementById('validatedForm') as HTMLFormElement
+  const submitBtn = document.getElementById('submitBtn') as HTMLButtonElement
+
+  // ========================================
+  // 奨学生/非奨学生の判別（ビルド時に data 属性で埋め込み）
+  // ========================================
+  const isScholar = form.dataset.isScholar === 'true'
+
+  // ========================================
+  // URL パラメータからの自動入力（応募年度・メールアドレス）
+  // ========================================
+  const urlParams = new URLSearchParams(window.location.search)
+  const yearParam = urlParams.get('year')
+  const emailParam = urlParams.get('ref')
+
+  if (yearParam) {
+    const yearInput = document.getElementById('応募年度') as HTMLInputElement
+    if (yearInput) yearInput.value = yearParam
+  }
+  if (emailParam) {
+    const emailInput = document.getElementById('email') as HTMLInputElement
+    if (emailInput) emailInput.value = emailParam
+  }
+
+  // ========================================
+  // 文理自己認識「その他」自由記述の表示切替
+  // ========================================
+  const bunriSelfRadios = document.querySelectorAll(
+    'input[name="応募時の文理自己認識"]',
+  ) as NodeListOf<HTMLInputElement>
+  const bunriSelfOtherWrapper = document.getElementById(
+    'bunri-self-other-wrapper',
+  ) as HTMLElement
+  const bunriSelfOtherInput = bunriSelfOtherWrapper?.querySelector(
+    'input',
+  ) as HTMLInputElement
+
+  bunriSelfRadios.forEach((radio) => {
+    radio.addEventListener('change', () => {
+      if (radio.value === 'その他' && radio.checked) {
+        bunriSelfOtherWrapper.style.display = 'block'
+      } else {
+        bunriSelfOtherWrapper.style.display = 'none'
+        if (bunriSelfOtherInput) bunriSelfOtherInput.value = ''
+      }
+    })
+  })
+
+  // ========================================
+  // フォーム送信処理（formrun へネイティブ送信）
+  // ========================================
+  form.addEventListener('validated-submit', () => {
+    // 連打防止: 送信ボタンを無効化 + テキスト変更
+    submitBtn.disabled = true
+    submitBtn.textContent = '送信中...'
+
+    // hidden input で追加フィールドを注入
+    const addHidden = (name: string, value: string) => {
+      const input = document.createElement('input')
+      input.type = 'hidden'
+      input.name = name
+      input.value = value
+      form.appendChild(input)
+    }
+
+    addHidden('送信ID', crypto.randomUUID())
+    addHidden('回答者種別', isScholar ? 'scholar' : 'non_scholar')
+
+    // ネイティブ form 送信（formrun API が受信 → リダイレクト）
+    form.submit()
+  })
+</script>

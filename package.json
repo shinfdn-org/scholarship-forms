@@ -1,0 +1,23 @@
+{
+  "name": "scholarship-forms",
+  "type": "module",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "lint": "biome check src",
+    "lint:fix": "biome check --write src",
+    "format": "biome format --write src"
+  },
+  "dependencies": {
+    "astro": "^6.0.2"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.4",
+    "@types/node": "^25.0.9",
+    "prettier": "^3.8.0",
+    "prettier-plugin-astro": "^0.14.1",
+    "typescript": "^5.9.3"
+  }
+}

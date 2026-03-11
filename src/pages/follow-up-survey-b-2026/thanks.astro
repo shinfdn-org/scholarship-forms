@@ -1,0 +1,63 @@
+---
+import FormLayout from '@layouts/FormLayout.astro'
+---
+
+<FormLayout title="送信完了 | フォローアップ調査">
+  <main>
+    <div class="top-title">
+      <p class="sub-title">STEM(理系)女子奨学助成金応募者</p>
+      <p class="sub-title">フォローアップ調査</p>
+      <h1>送信完了</h1>
+
+      <div class="attention" style="margin-top: 2rem;">
+        <p>
+          フォローアップ調査にご回答いただきまして、ありがとうございました。頂いた内容を、今後の助成金運営の改善に繋げてまいります。
+        </p>
+      </div>
+
+      <div class="attention">
+        <p>
+          STEM(理系)女子奨学助成金応募時の登録内容（氏名/生年月日/卒業高校名）との一致確認が取れた皆様へ、<br
+          />謝金として、<strong>1,000円分のアマゾンギフト券</strong>を、<strong
+            >2026年6月末まで</strong
+          >にメールにて送付させて頂きます。
+        </p>
+      </div>
+
+      <div style="text-align: center; margin-top: 3rem;">
+        <a href="https://www.shinfdn.org/" class="btn-link">
+          山田進太郎D&I財団 トップページへ
+        </a>
+      </div>
+    </div>
+  </main>
+</FormLayout>
+
+<style>
+  .sub-title {
+    font-size: 1.1rem;
+    color: var(--color-primary);
+    margin: 0;
+    line-height: 1.6;
+    text-align: center;
+  }
+
+  h1 {
+    margin-top: 1rem;
+  }
+
+  .btn-link {
+    display: inline-block;
+    background-color: var(--color-primary);
+    color: white;
+    padding: 0.8rem 2rem;
+    border-radius: 6px;
+    text-decoration: none;
+    transition: background-color 0.3s ease;
+  }
+
+  .btn-link:hover {
+    background-color: #00796b;
+    text-decoration: none;
+  }
+</style>

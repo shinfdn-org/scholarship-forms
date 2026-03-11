@@ -1,0 +1,216 @@
+---
+/**
+ * FieldSelection.astro - 学問分野選択コンポーネント
+ *
+ * 大学の学問分野（12 選択肢）を radio（単一）または checkbox（複数）で表示
+ * 「いずれでもない」「わからない」選択時にテキスト入力を表示
+ */
+
+interface Props {
+  /** input要素のname属性 */
+  name: string
+  /** ラベルテキスト */
+  label: string
+  /** 説明テキスト */
+  description?: string
+  /** 単一選択(radio)か複数選択(checkbox)か */
+  mode: 'single' | 'multiple'
+  /** 必須かどうか */
+  required?: boolean
+}
+
+const fieldItems = [
+  '人文科学（哲学、文学、歴史学、言語学、宗教学 など）',
+  '社会科学（経済学、法学、政治学、社会学、経営学 など）',
+  '理学（数学、物理学、化学、生物学、地球科学、情報科学 など）',
+  '工学（機械、電気・電子、情報工学、土木・建築、航空・宇宙、材料、エネルギー など）',
+  '農学（農学、畜産学、森林科学、水産学、農芸化学、食料生産科学 など）',
+  '保健（医学、歯学、薬学、看護学、保健学、リハビリテーション学 など）',
+  '商船（航海学、機関学、海洋工学、海事システム工学 など）',
+  '家政（栄養学、食物学、被服学、住居学、美容・生活科学 など）',
+  '教育（教育学、初等教育、中等教育、数学教育、理科教育、体育・健康教育 など）',
+  '芸術（美術、音楽、演劇、映像、デザイン、工芸 など）',
+]
+
+/** テキスト入力付きの選択肢 */
+const textItems = ['いずれでもない', 'わからない']
+
+const { name, label, description, mode, required = false } = Astro.props
+const inputType = mode === 'single' ? 'radio' : 'checkbox'
+const inputName = mode === 'multiple' ? `${name}[]` : name
+const id = `field-selection-${name}`
+---
+
+<div class="form-group field-selection" id={id} data-mode={mode}>
+  <label>
+    {label}
+    {
+      required ? (
+        <span class="required-badge">必須</span>
+      ) : (
+        <span class="optional-badge">任意</span>
+      )
+    }
+  </label>
+  {description && <p class="description">{description}</p>}
+
+  <div class="field-options">
+    {
+      fieldItems.map((item, idx) => (
+        <div class="field-option">
+          <label class="select-button">
+            <input
+              type={inputType}
+              name={inputName}
+              value={item}
+              id={`${id}-${idx}`}
+              data-conditional-required={required}
+            />
+            <span>{item}</span>
+          </label>
+        </div>
+      ))
+    }
+    {
+      textItems.map((item, idx) => (
+        <div class="field-option" data-has-text="true">
+          <label class="select-button">
+            <input
+              type={inputType}
+              name={inputName}
+              value={item}
+              id={`${id}-text-${idx}`}
+              data-conditional-required={required}
+              data-text-trigger="true"
+            />
+            <span>{item}</span>
+          </label>
+          <div class="field-text-wrapper" style="display: none;">
+            <input
+              type="text"
+              name={`${name}_${item === 'いずれでもない' ? 'いずれでもない' : 'わからない'}_詳細`}
+              placeholder="詳細を入力してください"
+              class="field-text-input"
+            />
+          </div>
+        </div>
+      ))
+    }
+  </div>
+
+  <p id={`${id}-error`} class="error-text">選択してください</p>
+</div>
+
+<script>
+  document.querySelectorAll('.field-selection').forEach((container) => {
+    const mode = container.getAttribute('data-mode')
+    const textTriggers = container.querySelectorAll(
+      '[data-text-trigger="true"]',
+    ) as NodeListOf<HTMLInputElement>
+
+    textTriggers.forEach((trigger) => {
+      const wrapper = trigger
+        .closest('.field-option')
+        ?.querySelector('.field-text-wrapper') as HTMLElement | null
+
+      if (!wrapper) return
+
+      trigger.addEventListener('change', () => {
+        if (mode === 'single') {
+          // radio: 全テキスト入力を非表示にしてから、選択されたものだけ表示
+          container.querySelectorAll('.field-text-wrapper').forEach((w) => {
+            ;(w as HTMLElement).style.display = 'none'
+            const input = w.querySelector('input') as HTMLInputElement | null
+            if (input) input.value = ''
+          })
+          if (trigger.checked) {
+            wrapper.style.display = 'block'
+          }
+        } else {
+          // checkbox: トグル
+          wrapper.style.display = trigger.checked ? 'block' : 'none'
+          if (!trigger.checked) {
+            const input = wrapper.querySelector(
+              'input',
+            ) as HTMLInputElement | null
+            if (input) input.value = ''
+          }
+        }
+      })
+    })
+
+    // radio モード: 通常の選択肢クリック時にテキスト入力を非表示
+    if (mode === 'single') {
+      const allRadios = container.querySelectorAll(
+        'input[type="radio"]',
+      ) as NodeListOf<HTMLInputElement>
+      allRadios.forEach((radio) => {
+        if (radio.hasAttribute('data-text-trigger')) return
+        radio.addEventListener('change', () => {
+          container.querySelectorAll('.field-text-wrapper').forEach((w) => {
+            ;(w as HTMLElement).style.display = 'none'
+            const input = w.querySelector('input') as HTMLInputElement | null
+            if (input) input.value = ''
+          })
+        })
+      })
+    }
+  })
+</script>
+
+<style>
+  .field-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .field-option .select-button {
+    display: flex;
+    align-items: flex-start;
+    padding: 0.6rem 1rem;
+    border: 1px solid var(--color-border, #d9d9d9);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    background-color: white;
+    line-height: 1.4;
+  }
+
+  .field-option .select-button:hover {
+    border-color: var(--color-primary, #009688);
+  }
+
+  .field-option .select-button:has(input:checked) {
+    border-color: var(--color-primary, #009688);
+    background-color: rgba(0, 150, 136, 0.05);
+  }
+
+  .field-option .select-button input {
+    margin-right: 0.5rem;
+    margin-top: 0.2rem;
+    flex-shrink: 0;
+  }
+
+  .field-option .select-button span {
+    font-size: 0.9rem;
+  }
+
+  .field-text-wrapper {
+    margin-top: 0.25rem;
+    margin-left: 1.5rem;
+  }
+
+  .field-text-input {
+    width: 100%;
+    padding: 0.6rem 0.8rem;
+    border: 1px solid var(--color-border, #ccc);
+    border-radius: 6px;
+    font-size: 1rem;
+  }
+
+  .field-text-input:focus {
+    outline: none;
+    border-color: var(--color-primary, #009688);
+  }
+</style>

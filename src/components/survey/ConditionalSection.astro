@@ -1,0 +1,90 @@
+---
+/**
+ * ConditionalSection.astro - 条件分岐セクション
+ *
+ * 特定のラジオボタン選択時のみ表示されるセクション
+ * 同意確認や進路選択などで使用
+ */
+
+interface Props {
+  /** 監視するラジオボタンのname属性 */
+  triggerName: string
+  /** 表示条件となる値 */
+  showWhen: string
+  /** セクションのID */
+  id?: string
+}
+
+const { triggerName, showWhen, id } = Astro.props
+---
+
+<div
+  class="conditional-section"
+  id={id}
+  data-trigger-name={triggerName}
+  data-show-when={showWhen}
+  style="display: none;"
+>
+  <slot />
+</div>
+
+<script>
+  document.querySelectorAll('.conditional-section').forEach((section) => {
+    const triggerName = section.getAttribute('data-trigger-name')
+    const showWhen = section.getAttribute('data-show-when')
+
+    if (!triggerName || !showWhen) return
+
+    // フォーム内にスコープを限定（ネスト時に意図しないトリガーを拾わないようにする）
+    const scope = section.closest('form') || document
+    const radios = scope.querySelectorAll(`input[name="${triggerName}"]`)
+
+    const updateVisibility = () => {
+      const selectedRadio = scope.querySelector(
+        `input[name="${triggerName}"]:checked`,
+      ) as HTMLInputElement | null
+
+      if (selectedRadio && selectedRadio.value === showWhen) {
+        ;(section as HTMLElement).style.display = 'block'
+        // 表示時に必須フィールドを有効化（値が "true" の要素のみ対象）
+        section
+          .querySelectorAll('[data-conditional-required="true"]')
+          .forEach((field) => {
+            field.setAttribute('data-required', 'true')
+          })
+      } else {
+        ;(section as HTMLElement).style.display = 'none'
+        // 非表示時に必須フィールドを無効化
+        section
+          .querySelectorAll('[data-conditional-required="true"]')
+          .forEach((field) => {
+            field.removeAttribute('data-required')
+          })
+      }
+    }
+
+    radios.forEach((radio) => {
+      radio.addEventListener('change', updateVisibility)
+    })
+
+    // 初期状態をチェック
+    updateVisibility()
+  })
+</script>
+
+<style>
+  .conditional-section {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+</style>
