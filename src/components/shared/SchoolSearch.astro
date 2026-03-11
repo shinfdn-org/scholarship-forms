@@ -28,7 +28,7 @@ const {
   codeName = 'school_code',
   schoolName = 'school_name',
   required = true,
-  dataPath = `${import.meta.env.BASE_URL}data/school.json`,
+  dataPath = `${import.meta.env.BASE_URL.replace(/\/?$/, '/')}data/school.json`,
 } = Astro.props
 ---
 
