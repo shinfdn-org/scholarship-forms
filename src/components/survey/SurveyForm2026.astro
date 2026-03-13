@@ -1465,7 +1465,10 @@ const scoreLabels = [
   // ========================================
   const urlParams = new URLSearchParams(window.location.search)
   const yearParam = urlParams.get('year')
-  const emailParam = urlParams.get('ref')
+
+  const rawParams = window.location.search.slice(1)
+  const emailMatch = rawParams.match(/(?:^|&)ref=([^&]*)/)
+  const emailParam = emailMatch ? decodeURIComponent(emailMatch[1]) : null
 
   if (yearParam) {
     const yearInput = document.getElementById('応募年度') as HTMLInputElement
