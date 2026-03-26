@@ -1,0 +1,131 @@
+---
+/**
+ * メンテナンス期間中にフォームを非表示にし、案内文を表示するコンポーネント。
+ *
+ * 使い方:
+ *   <MaintenanceBanner
+ *     start="2026-04-15T01:00:00+09:00"
+ *     end="2026-04-15T03:00:00+09:00"
+ *     message="4月15日（水）午前3:00以降にご回答いただけますと幸いです。"
+ *   />
+ *
+ * - start / end: ISO 8601 形式の日時文字列（タイムゾーン付き）
+ * - message: メンテナンス中に表示する案内文（HTML 可）
+ * - 指定期間外ではバナーは非表示、フォームはそのまま表示される
+ * - 期間中はフォーム（slot 要素）が非表示になり、バナーが表示される
+ * - 1 分おきに自動チェックし、終了時刻を過ぎると自動復帰する
+ *
+ * 不要になったら props を外すか、コンポーネントごと削除してください。
+ */
+interface Props {
+  /** メンテナンス開始日時（ISO 8601） */
+  start: string
+  /** メンテナンス終了日時（ISO 8601） */
+  end: string
+  /** メンテナンス中に表示するメッセージ（HTML 可） */
+  message?: string
+}
+
+const { start, end, message } = Astro.props
+---
+
+<div
+  id="maintenance-banner"
+  data-start={start}
+  data-end={end}
+  style="display:none"
+>
+  <div class="maintenance-title">
+    <h1>STEM(理系)女子奨学助成金</h1>
+    <h2>フォローアップ調査</h2>
+  </div>
+  {
+    message ? (
+      <div class="maintenance-message" set:html={message} />
+    ) : (
+      <div class="maintenance-message">
+        <p>只今メンテナンス中のため、ご回答いただくことができません。</p>
+        <p>メンテナンス終了後に改めてご回答ください。</p>
+      </div>
+    )
+  }
+</div>
+
+<style>
+  #maintenance-banner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100dvh;
+    padding: 2rem;
+    text-align: center;
+  }
+
+  .maintenance-title {
+    margin-bottom: 2rem;
+  }
+
+  .maintenance-title h1 {
+    font-size: 1.4rem;
+    margin: 0;
+  }
+
+  .maintenance-title h2 {
+    font-size: 1.1rem;
+    margin: 0.25rem 0 0;
+    font-weight: normal;
+  }
+
+  .maintenance-message {
+    max-width: 720px;
+    background-color: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: 8px;
+    padding: 2rem;
+    line-height: 1.8;
+    font-size: 0.95rem;
+  }
+
+  .maintenance-message :global(p) {
+    margin: 0.5rem 0;
+  }
+
+  .maintenance-message :global(.maintenance-period) {
+    margin-top: 1.5rem;
+    font-weight: bold;
+  }
+</style>
+
+<script>
+  const banner = document.getElementById(
+    'maintenance-banner',
+  ) as HTMLElement | null
+  if (banner) {
+    const el = banner
+    const start = new Date(el.dataset.start!).getTime()
+    const end = new Date(el.dataset.end!).getTime()
+
+    /** フォームのルートコンテナ（同じ親内の <main> 要素） */
+    const formContainer = el.parentElement?.querySelector(
+      'main',
+    ) as HTMLElement | null
+
+    function checkMaintenance() {
+      const now = Date.now()
+      const isMaintenance = now >= start && now < end
+
+      el.style.display = isMaintenance ? '' : 'none'
+      document.body.style.margin = isMaintenance ? '0 auto' : ''
+      document.body.style.padding = isMaintenance ? '0' : ''
+      document.body.style.maxWidth = isMaintenance ? 'none' : ''
+      if (formContainer) {
+        formContainer.style.display = isMaintenance ? 'none' : ''
+      }
+    }
+
+    checkMaintenance()
+    // 1 分おきに再チェック（期間終了で自動復帰）
+    setInterval(checkMaintenance, 60_000)
+  }
+</script>

@@ -1,5 +1,6 @@
 ---
 import FormLayout from '@layouts/FormLayout.astro'
+import MaintenanceBanner from '@components/shared/MaintenanceBanner.astro'
 // shared components
 import FormSection from '@components/shared/FormSection.astro'
 import SchoolSearch from '@components/shared/SchoolSearch.astro'
@@ -18,9 +19,15 @@ interface Props {
   isScholar: boolean
   /** formrun の送信先 URL */
   formAction: string
+  /** メンテナンス設定（省略時はメンテナンスなし） */
+  maintenance?: {
+    start: string
+    end: string
+    message?: string
+  }
 }
 
-const { isScholar, formAction } = Astro.props
+const { isScholar, formAction, maintenance } = Astro.props
 
 // ========================================
 // データ定数
@@ -145,6 +152,15 @@ const scoreLabels = [
 ---
 
 <FormLayout title="STEM(理系)女子奨学助成金 フォローアップ調査 2026">
+  {
+    maintenance && (
+      <MaintenanceBanner
+        start={maintenance.start}
+        end={maintenance.end}
+        message={maintenance.message}
+      />
+    )
+  }
   <main>
     <div class="top-title">
       <h1>STEM(理系)女子奨学助成金</h1>

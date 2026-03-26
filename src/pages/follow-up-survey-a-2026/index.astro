@@ -5,4 +5,13 @@ import SurveyForm2026 from '@components/survey/SurveyForm2026.astro'
 <SurveyForm2026
   isScholar={true}
   formAction="https://form.run/api/v1/r/l58lmdsillq5nzuiiqz6zah7"
+  maintenance={{
+    start: '2026-04-15T01:00:00+09:00',
+    end: '2026-04-15T03:00:00+09:00',
+    message: `
+      <p>只今メンテナンス中のため、ご回答いただくことができません。</p>
+      <p>お手数をおかけいたしますが、メンテナンス終了後の、<br>4月15日（水）午前3:00以降にご回答いただけますと幸いです。</p>
+      <p class="maintenance-period">■メンテナンス実施時間<br>2026年4月15日 (水) 午前1:00 ～ 2026年4月15日 (水) 午前3:00</p>
+    `,
+  }}
 />
