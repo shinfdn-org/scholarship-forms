@@ -1,0 +1,74 @@
+---
+/**
+ * メンテナンス前の事前告知を、指定期間のみ表示するコンポーネント。
+ *
+ * 使い方:
+ *   <MaintenanceNotice
+ *     showFrom="2026-04-10T00:00:00+09:00"
+ *     showUntil="2026-04-14T23:00:00+09:00"
+ *     message="<p>...</p>"
+ *   />
+ *
+ * - showFrom / showUntil: ISO 8601 形式の日時文字列（タイムゾーン付き）
+ * - message: 表示する案内文（HTML 可）
+ * - showFrom 以前・showUntil 以降は非表示
+ * - 1 分おきに自動チェックし、期間終了で自動的に消える
+ * - 同じページ内に複数配置できる（MaintenanceBanner や ClosedBanner と併用可）
+ *
+ * 不要になったらコンポーネントの呼び出しごと削除してください。
+ */
+interface Props {
+  /** 表示開始日時（ISO 8601） */
+  showFrom: string
+  /** 表示終了日時（ISO 8601） */
+  showUntil: string
+  /** 表示する案内文（HTML 可） */
+  message: string
+}
+
+const { showFrom, showUntil, message } = Astro.props
+---
+
+<div
+  class="pre-maintenance-notice"
+  data-show-from={showFrom}
+  data-show-until={showUntil}
+  style="display:none"
+>
+  <Fragment set:html={message} />
+</div>
+
+<style>
+  .pre-maintenance-notice {
+    background-color: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin: 1rem 0;
+    font-size: 0.95rem;
+    line-height: 1.7;
+    color: var(--color-text);
+  }
+
+  .pre-maintenance-notice :global(p) {
+    margin: 0.25rem 0;
+  }
+</style>
+
+<script>
+  function updateMaintenanceNotices() {
+    const notices = document.querySelectorAll<HTMLElement>(
+      '.pre-maintenance-notice',
+    )
+    const now = Date.now()
+    notices.forEach((el) => {
+      const from = new Date(el.dataset.showFrom!).getTime()
+      const until = new Date(el.dataset.showUntil!).getTime()
+      el.style.display = now >= from && now < until ? '' : 'none'
+    })
+  }
+
+  updateMaintenanceNotices()
+  // 1 分おきに再チェック（期間到達・終了で自動切替）
+  setInterval(updateMaintenanceNotices, 60_000)
+</script>

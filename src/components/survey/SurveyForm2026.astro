@@ -1,6 +1,8 @@
 ---
 import FormLayout from '@layouts/FormLayout.astro'
 import MaintenanceBanner from '@components/shared/MaintenanceBanner.astro'
+import MaintenanceNotice from '@components/shared/MaintenanceNotice.astro'
+import ClosedBanner from '@components/shared/ClosedBanner.astro'
 // shared components
 import FormSection from '@components/shared/FormSection.astro'
 import SchoolSearch from '@components/shared/SchoolSearch.astro'
@@ -25,9 +27,18 @@ interface Props {
     end: string
     message?: string
   }
+  /** 受付終了日時（ISO 8601、省略時は常時受付） */
+  closeAt?: string
+  /** メンテナンス前の事前告知（期間中のみフォーム内に表示） */
+  preMaintenanceNotice?: {
+    showFrom: string
+    showUntil: string
+    message: string
+  }
 }
 
-const { isScholar, formAction, maintenance } = Astro.props
+const { isScholar, formAction, maintenance, closeAt, preMaintenanceNotice } =
+  Astro.props
 
 // ========================================
 // データ定数
@@ -161,10 +172,21 @@ const scoreLabels = [
       />
     )
   }
+  {closeAt && <ClosedBanner closeAt={closeAt} />}
   <main>
     <div class="top-title">
       <h1>STEM(理系)女子奨学助成金</h1>
       <h2>フォローアップ調査</h2>
+
+      {
+        preMaintenanceNotice && (
+          <MaintenanceNotice
+            showFrom={preMaintenanceNotice.showFrom}
+            showUntil={preMaintenanceNotice.showUntil}
+            message={preMaintenanceNotice.message}
+          />
+        )
+      }
 
       <div class="attention">
         <p>
@@ -1228,6 +1250,15 @@ const scoreLabels = [
       <!-- ========================================== -->
       <!-- 送信ボタン -->
       <!-- ========================================== -->
+      {
+        preMaintenanceNotice && (
+          <MaintenanceNotice
+            showFrom={preMaintenanceNotice.showFrom}
+            showUntil={preMaintenanceNotice.showUntil}
+            message={preMaintenanceNotice.message}
+          />
+        )
+      }
       <div class="form-group">
         <button type="submit" id="submitBtn">回答を送信する</button>
       </div>

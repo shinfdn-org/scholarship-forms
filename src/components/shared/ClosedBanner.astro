@@ -1,0 +1,101 @@
+---
+/**
+ * 指定日時を過ぎたらフォームを非表示にし、受付終了ページを表示するコンポーネント。
+ *
+ * 使い方:
+ *   <ClosedBanner closeAt="2026-05-01T01:00:00+09:00" />
+ *
+ * - closeAt: ISO 8601 形式の日時文字列（タイムゾーン付き）
+ * - closeAt 以前はバナーは非表示、フォームはそのまま表示される
+ * - closeAt 以降はフォーム（同階層の <main> 要素）が非表示になり、
+ *   受付終了の案内が表示される
+ * - 1 分おきに自動チェックするため、開いたままのタブでも自動切替される
+ *
+ * 不要になったら props を外すか、コンポーネントごと削除してください。
+ */
+interface Props {
+  /** 受付終了日時（ISO 8601） */
+  closeAt: string
+}
+
+const { closeAt } = Astro.props
+---
+
+<div id="closed-banner" data-close-at={closeAt} style="display:none">
+  <div class="top-title">
+    <p class="sub-title">STEM(理系)女子奨学助成金応募者</p>
+    <p class="sub-title">フォローアップ調査</p>
+    <h1>受付終了</h1>
+
+    <div class="attention" style="margin-top: 2rem;">
+      <p>
+        ご覧いただいているフォーム入力画面は、現在非公開となっております。
+      </p>
+    </div>
+
+    <div style="text-align: center; margin-top: 3rem;">
+      <a href="https://www.shinfdn.org/" class="btn-link">
+        山田進太郎D&I財団 トップページへ
+      </a>
+    </div>
+  </div>
+</div>
+
+<style>
+  .sub-title {
+    font-size: 1.1rem;
+    color: var(--color-primary);
+    margin: 0;
+    line-height: 1.6;
+    text-align: center;
+  }
+
+  #closed-banner h1 {
+    margin-top: 1rem;
+    text-align: center;
+  }
+
+  .btn-link {
+    display: inline-block;
+    background-color: var(--color-primary);
+    color: white;
+    padding: 0.8rem 2rem;
+    border-radius: 6px;
+    text-decoration: none;
+    transition: background-color 0.3s ease;
+  }
+
+  .btn-link:hover {
+    background-color: #00796b;
+    text-decoration: none;
+  }
+</style>
+
+<script>
+  const banner = document.getElementById(
+    'closed-banner',
+  ) as HTMLElement | null
+  if (banner) {
+    const el = banner
+    const closeAt = new Date(el.dataset.closeAt!).getTime()
+
+    /** フォームのルートコンテナ（同じ親内の <main> 要素） */
+    const formContainer = el.parentElement?.querySelector(
+      'main',
+    ) as HTMLElement | null
+
+    function checkClosed() {
+      const now = Date.now()
+      const isClosed = now >= closeAt
+
+      el.style.display = isClosed ? '' : 'none'
+      if (formContainer) {
+        formContainer.style.display = isClosed ? 'none' : ''
+      }
+    }
+
+    checkClosed()
+    // 1 分おきに再チェック（開きっぱなしのタブで自動切替）
+    setInterval(checkClosed, 60_000)
+  }
+</script>
