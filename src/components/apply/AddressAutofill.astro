@@ -1,0 +1,148 @@
+---
+/**
+ * AddressAutofill.astro - 郵便番号から住所自動補完
+ *
+ * zipcloud API を使用して郵便番号から住所を自動入力
+ * https://zipcloud.ibsnet.co.jp/
+ */
+
+interface Props {
+  /** 必須かどうか */
+  required?: boolean
+}
+
+import { prefectures } from '@data/prefectures'
+
+const { required = true } = Astro.props
+---
+
+<div class="address-autofill form-group">
+  <label>
+    住所
+    {required && <span class="required-badge">必須</span>}
+  </label>
+  <p class="description">
+    郵便番号（ハイフンなし）を入力すると自動補完されます
+  </p>
+
+  <div class="form-inline-postal">
+    <div>
+      <label>郵便番号</label>
+      <input
+        type="text"
+        id="postal-code"
+        name="郵便番号"
+        placeholder="1234567"
+        maxlength="7"
+        inputmode="numeric"
+        pattern="[0-9]*"
+        data-formrun-type="postal-code-jp"
+        data-required={required}
+      />
+      <p id="postal-error" class="error-text">入力してください</p>
+    </div>
+    <div>
+      <label>都道府県</label>
+      <select
+        id="prefecture"
+        name="都道府県"
+        data-formrun-type="region"
+        data-formrun-target="郵便番号"
+        data-required={required}
+      >
+        <option value="">選択してください</option>
+        {prefectures.map((pref) => <option value={pref}>{pref}</option>)}
+      </select>
+      <p id="pref-error" class="error-text">入力してください</p>
+    </div>
+  </div>
+
+  <div class="form-inline-postal">
+    <div style="flex: 2;">
+      <label>市区町村</label>
+      <input
+        type="text"
+        id="city"
+        name="市区町村"
+        data-formrun-type="locality"
+        data-formrun-target="郵便番号"
+        data-required={required}
+      />
+      <p id="city-error" class="error-text">入力してください</p>
+    </div>
+  </div>
+
+  <div class="form-inline-postal">
+    <div style="flex: 2;">
+      <label>番地</label>
+      <input
+        type="text"
+        id="address"
+        name="番地"
+        data-formrun-type="street-address"
+        data-formrun-target="郵便番号"
+        data-required={required}
+      />
+      <p id="address-error" class="error-text">入力してください</p>
+    </div>
+  </div>
+
+  <div class="form-inline-postal">
+    <div style="flex: 2;">
+      <label>建物名・部屋番号 <span class="optional-badge">任意</span></label>
+      <input type="text" id="building" name="建物名・部屋番号" />
+    </div>
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll('.address-autofill').forEach((container) => {
+    const postalInput = container.querySelector(
+      '#postal-code',
+    ) as HTMLInputElement
+    const prefectureSelect = container.querySelector(
+      '#prefecture',
+    ) as HTMLSelectElement
+    const cityInput = container.querySelector('#city') as HTMLInputElement
+    const addressInput = container.querySelector('#address') as HTMLInputElement
+
+    // 郵便番号入力時の自動補完
+    postalInput.addEventListener('input', async () => {
+      const postalCode = postalInput.value.replace(/[^0-9]/g, '')
+
+      // 7桁になったらAPI呼び出し
+      if (postalCode.length === 7) {
+        try {
+          const response = await fetch(
+            `https://zipcloud.ibsnet.co.jp/api/search?zipcode=${postalCode}`,
+          )
+          const data = await response.json()
+
+          if (data.results && data.results.length > 0) {
+            const result = data.results[0]
+
+            // 都道府県を設定
+            prefectureSelect.value = result.address1
+
+            // 市区町村 + 町域を設定
+            cityInput.value = result.address2 + result.address3
+
+            // 番地にフォーカスを移動
+            if (addressInput) {
+              addressInput.focus()
+            }
+          }
+        } catch (error) {
+          console.error('郵便番号検索エラー:', error)
+        }
+      }
+    })
+
+    // 数字以外を除去
+    postalInput.addEventListener('keypress', (e) => {
+      if (!/[0-9]/.test(e.key) && e.key !== 'Backspace' && e.key !== 'Delete') {
+        e.preventDefault()
+      }
+    })
+  })
+</script>

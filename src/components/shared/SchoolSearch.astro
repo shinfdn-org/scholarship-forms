@@ -71,7 +71,7 @@ const {
       </p>
       <div class="form-inline-postal">
         <div>
-          <select id="schoolTypeSelect" name="学校の種類">
+          <select id="schoolTypeSelect">
             <option value="">（任意）学校の種類を選択</option>
             <option value="D1(高校)">高等学校（高校）</option>
             <option value="D2(中等)">中等教育学校（中高一貫校）</option>
@@ -79,7 +79,7 @@ const {
           </select>
         </div>
         <div>
-          <select id="prefSelect" name="都道府県">
+          <select id="prefSelect">
             <option value="">（任意）都道府県を選択</option>
             {prefectures.map((pref) => <option value={pref}>{pref}</option>)}
           </select>
@@ -117,6 +117,7 @@ const {
         </div>
       </div>
     </div>
+    <input type="hidden" id="schoolTypeHidden" name="学校の種類" value="" />
   </div>
 </div>
 
@@ -165,6 +166,13 @@ const {
   /** リアルタイム検索のdebounce時間(ms) */
   const DEBOUNCE_MS = 200
 
+  /** school.json の最上位キー → formrun に送る人間可読ラベル */
+  const SCHOOL_TYPE_LABEL: Record<string, string> = {
+    'D1(高校)': '高等学校',
+    'D2(中等)': '中等教育学校',
+    'G1(高専)': '高等専門学校',
+  }
+
   class SchoolSearchComponent {
     private container: HTMLElement
     private schoolData: SchoolData = {}
@@ -179,6 +187,7 @@ const {
     private nameInput: HTMLInputElement
     private prefSelect: HTMLSelectElement
     private schoolTypeSelect: HTMLSelectElement
+    private schoolTypeHidden: HTMLInputElement
     private searchWord: HTMLInputElement
     private searchButton: HTMLButtonElement
 
@@ -200,6 +209,9 @@ const {
       this.schoolTypeSelect = container.querySelector(
         '#schoolTypeSelect',
       ) as HTMLSelectElement
+      this.schoolTypeHidden = container.querySelector(
+        '#schoolTypeHidden',
+      ) as HTMLInputElement
       this.searchWord = container.querySelector(
         '#searchWord',
       ) as HTMLInputElement
@@ -276,6 +288,7 @@ const {
     private enableManualInput() {
       this.codeInput.value = 'D999999999999'
       this.nameInput.value = ''
+      this.schoolTypeHidden.value = ''
       this.nameInput.removeAttribute('readonly')
       this.nameInput.placeholder = '学校名を入力してください'
       this.nameInput.style.backgroundColor = '#fff'
@@ -348,6 +361,7 @@ const {
           li.addEventListener('click', () => {
             this.codeInput.value = school.code
             this.nameInput.value = school.name
+            this.schoolTypeHidden.value = SCHOOL_TYPE_LABEL[school.type] || ''
             this.showPlaceholder()
           })
           this.suggestionList.appendChild(li)

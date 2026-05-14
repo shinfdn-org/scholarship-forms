@@ -1,0 +1,118 @@
+---
+/**
+ * MultiCheckbox.astro - 複数選択チェックボックスコンポーネント
+ *
+ * 複数選択可能なチェックボックスリストを表示
+ * シャッフル機能はオプション
+ *
+ * 用途:
+ * - 認知経路（きっかけ）選択
+ * - その他の複数選択項目
+ */
+
+interface Props {
+  /** input要素のname属性 */
+  name: string
+  /** 選択肢の配列 */
+  items: string[]
+  /** 最後に表示する追加選択肢（「その他」など） */
+  otherItem?: string
+  /** 選択肢をシャッフルするかどうか */
+  shuffle?: boolean
+  /** 必須かどうか */
+  required?: boolean
+  /** コンポーネントのID */
+  id?: string
+  /** ラベルテキスト */
+  label?: string
+  /** 説明テキスト */
+  description?: string
+}
+
+const {
+  name,
+  items,
+  otherItem,
+  shuffle = false,
+  required = false,
+  id = `multi-checkbox-${name}`,
+  label,
+  description,
+} = Astro.props
+---
+
+<div
+  class="multi-checkbox"
+  id={id}
+  data-name={name}
+  data-shuffle={shuffle.toString()}
+>
+  {
+    label && (
+      <label>
+        {label}
+        {required && <span class="required-badge">必須</span>}
+      </label>
+    )
+  }
+  {description && <p class="description">{description}</p>}
+
+  <div class="checkbox-container">
+    {
+      items.map((item, idx) => (
+        <div class="checkbox-wrapper" data-shuffle={shuffle ? 'true' : 'false'}>
+          <input
+            type="checkbox"
+            id={`${id}-${idx}`}
+            name={name}
+            value={item}
+            data-required={required}
+          />
+          <label for={`${id}-${idx}`}>{item}</label>
+        </div>
+      ))
+    }
+    {
+      otherItem && (
+        <div class="checkbox-wrapper" data-other="true">
+          <input
+            type="checkbox"
+            id={`${id}-other`}
+            name={name}
+            value={otherItem}
+            data-required={required}
+          />
+          <label for={`${id}-other`}>{otherItem}</label>
+        </div>
+      )
+    }
+  </div>
+
+  <p id={`${id}-error`} class="error-text">選択してください</p>
+</div>
+
+<script>
+  import { shuffleArray } from '@data/shuffle'
+
+  document.querySelectorAll('.multi-checkbox').forEach((container) => {
+    const checkboxContainer = container.querySelector('.checkbox-container')
+    const shouldShuffle = container.dataset.shuffle === 'true'
+
+    if (shouldShuffle && checkboxContainer) {
+      const items = Array.from(
+        checkboxContainer.querySelectorAll('[data-shuffle="true"]'),
+      )
+      const otherItem = checkboxContainer.querySelector('[data-other="true"]')
+
+      shuffleArray(items)
+
+      // Re-append in shuffled order
+      items.forEach((item) => checkboxContainer.appendChild(item))
+
+      // Other item always at the end
+      if (otherItem) {
+        checkboxContainer.appendChild(otherItem)
+      }
+    }
+  })
+</script>

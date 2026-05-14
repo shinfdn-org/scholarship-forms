@@ -1,0 +1,561 @@
+---
+import FormLayout from '@layouts/FormLayout.astro'
+// shared components
+import FormSection from '@components/shared/FormSection.astro'
+import SchoolSearch from '@components/shared/SchoolSearch.astro'
+import RandomizedCheckbox from '@components/shared/RandomizedCheckbox.astro'
+import TextareaWithCount from '@components/shared/TextareaWithCount.astro'
+import FormValidator from '@components/shared/FormValidator.astro'
+// apply-specific components
+import MultiCheckbox from '@components/apply/MultiCheckbox.astro'
+import AddressAutofill from '@components/apply/AddressAutofill.astro'
+
+// ハードル選択肢
+const hurdleItems = [
+  '理系に進学するための学費が十分にないこと',
+  '自分が何をやりたいのか将来像がまだ明確になっていないこと',
+  '理数系科目の成績が伸び悩んでいること',
+  '周囲に理系に進んだ先輩や進みたい同級生がおらず、情報が少ないこと',
+  '親戚、家族などに理系や進みたい分野に進学することを反対されていること',
+  '先生や知人、友人、先輩など親以外の第3者から理系以外の分野への進学を勧められていること',
+  '居住地の地理的な環境（島嶼部、山間地など）により、交通費や移動時間などの制約があること',
+  '就職先のイメージがわいておらず、理系に進むことに不安があること',
+  '親が文系大学進学のためイメージがわきづらいこと',
+  '親が大学進学していないためイメージがわきづらいこと',
+]
+
+// 認知経路選択肢
+const kikkakeItems = [
+  'Instagram',
+  'X(旧Twitter)',
+  'LINE',
+  'Youtube',
+  'TikTok',
+  'インターネット検索',
+  '学校のチラシ配布（紙）',
+  '学校のチラシ配布（デジタル）',
+  '学校に貼ってあったポスター等の掲示物',
+  '塾に貼ってあったポスター',
+  '塾からのメールやチラシ',
+  '図書館その他公共施設でのポスター等の掲示物',
+  'D&I財団主催イベント',
+  '奨学金情報サイト',
+  'ニュースサイト',
+  '新聞',
+  'テレビ',
+  '保護者の紹介',
+  '先生の紹介',
+  '友人・知人の紹介',
+]
+
+// 興味分野選択肢
+const interestFields = [
+  { value: '', label: '選択してください' },
+  {
+    value: 'まだ決まっていない/検討中である',
+    label: 'まだ決まっていない/検討中である',
+  },
+  {
+    value: '素材、物質などの研究開発に関わる、化学分野',
+    label: '素材、物質などの研究開発に関わる、化学分野',
+  },
+  {
+    value: 'ものづくりに関わる、工学（機械、電気電子など）分野',
+    label: 'ものづくりに関わる、工学（機械、電気電子など）分野',
+  },
+  {
+    value: '住まいや街作りに関わる、土木・建築分野',
+    label: '住まいや街作りに関わる、土木・建築分野',
+  },
+  {
+    value: 'プログラミング・AIなど、情報科学分野',
+    label: 'プログラミング・AIなど、情報科学分野',
+  },
+  {
+    value: '医療に関わる、医・歯・薬分野',
+    label: '医療に関わる、医・歯・薬分野',
+  },
+  {
+    value: '人の健康や福祉に関わる、看護、美容、栄養、食品などの分野',
+    label: '人の健康や福祉に関わる、看護、美容、栄養、食品などの分野',
+  },
+  {
+    value: '遺伝子、バイオなどの生物分野',
+    label: '遺伝子、バイオなどの生物分野',
+  },
+  {
+    value: '航空宇宙、天文学、惑星科学などの宇宙分野',
+    label: '航空宇宙、天文学、惑星科学などの宇宙分野',
+  },
+  {
+    value: '環境学、地質学、気候学などの地学分野',
+    label: '環境学、地質学、気候学などの地学分野',
+  },
+  {
+    value: '獣医学、畜産学、植物学、土壌学などの農学分野',
+    label: '獣医学、畜産学、植物学、土壌学などの農学分野',
+  },
+  {
+    value: '論理をつきつめる、数学・物理などの理学分野',
+    label: '論理をつきつめる、数学・物理などの理学分野',
+  },
+  {
+    value: '理科教育、数学教育などの教育分野',
+    label: '理科教育、数学教育などの教育分野',
+  },
+  {
+    value: '原子力、燃料電池、新エネルギーなどのエネルギー分野',
+    label: '原子力、燃料電池、新エネルギーなどのエネルギー分野',
+  },
+]
+
+// 文理選択選択肢
+const bunriOptions = [
+  { value: '', label: '選択してください' },
+  {
+    value: 'わからない・まだ決めていない（迷っている）',
+    label: 'わからない・まだ決めていない（迷っている）',
+  },
+  { value: '理系', label: '理系' },
+  { value: 'どちらかといえば理系', label: 'どちらかといえば理系' },
+  { value: 'どちらでもない', label: 'どちらでもない' },
+  { value: 'どちらかといえば文系', label: 'どちらかといえば文系' },
+  { value: '文系', label: '文系' },
+]
+---
+
+<FormLayout title="STEM(理系)女子奨学助成金申し込み">
+  <main>
+    <div class="top-title">
+      <h1>STEM(理系)女子奨学助成金申し込み</h1>
+      <h2>高等学校1、2年生(高専含む)対象</h2>
+      <h3>
+        2026年4月時点で高校新2、3年生<br />
+        または高専新2、3年生になる方
+      </h3>
+
+      <p class="attention">
+        記載内容が事実と異なっていた場合、給付取り消しとなることがあります。虚偽の記載はしないようにお願いします。
+      </p>
+
+      <p class="deadline">回答締め切り 2026-09-30 23:45</p>
+    </div>
+
+    <div class="below-form">
+      <p>応募者ご本人について伺います。</p>
+
+      <form
+        id="validatedForm"
+        class="formrun"
+        action="https://form.run/api/v1/r/adt9umixpbw16ij51b1zxhay"
+        method="post"
+      >
+        <!-- 隠しフィールド: プレエントリーID -->
+        <input type="hidden" id="secretID" name="プレエントリーID" />
+
+        <!-- 名前 -->
+        <FormSection
+          label="名前"
+          required={true}
+          errorMessage="入力してください"
+          errorId="name-error"
+        >
+          <div class="form-inline-name">
+            <div>
+              <label>姓</label>
+              <input
+                type="text"
+                id="sei"
+                name="姓"
+                placeholder="山田"
+                data-required="true"
+              />
+            </div>
+            <div>
+              <label>名</label>
+              <input
+                type="text"
+                id="mei"
+                name="名"
+                placeholder="葵"
+                data-required="true"
+              />
+            </div>
+          </div>
+        </FormSection>
+
+        <!-- フリガナ -->
+        <FormSection
+          label="名前（フリガナ）"
+          required={true}
+          errorMessage="全角カタカナで入力してください"
+          errorId="kana-error"
+        >
+          <div class="form-inline-name">
+            <div>
+              <label>セイ</label>
+              <input
+                type="text"
+                id="sei-kana"
+                name="セイ"
+                placeholder="ヤマダ"
+                data-required="true"
+              />
+            </div>
+            <div>
+              <label>メイ</label>
+              <input
+                type="text"
+                id="mei-kana"
+                name="メイ"
+                placeholder="アオイ"
+                data-required="true"
+              />
+            </div>
+          </div>
+        </FormSection>
+
+        <!-- メールアドレス -->
+        <FormSection
+          label="登録済みメールアドレス（変更不可）"
+          required={true}
+          description="本申し込みフォームのURLをお送りしたこちらのメールアドレスに、申し込み後の完了メールおよび、2026年11月頃に選考結果が届きます。申し込み完了メールの受信を必ずご確認ください。姉妹などで応募頂く場合は、別々のメールアドレスでのご登録をお願いします。"
+          errorMessage="有効なメールアドレスを入力してください"
+          errorId="email-error"
+        >
+          <div class="form-group-email">
+            <input
+              type="email"
+              id="email"
+              name="メールアドレス"
+              placeholder="example@mail.com"
+              data-required="true"
+              readonly
+            />
+          </div>
+        </FormSection>
+
+        <!-- 学年 -->
+        <FormSection
+          label="現在の学年"
+          required={true}
+          errorMessage="入力してください"
+          errorId="grade-error"
+        >
+          <select id="grade" name="現在の学年" data-required="true">
+            <option value="">選択してください</option>
+            <option value="1">高校1年生</option>
+            <option value="2">高校2年生</option>
+            <option value="3">高専1年生</option>
+            <option value="4">高専2年生</option>
+          </select>
+        </FormSection>
+
+        <!-- 生年月日 -->
+        <FormSection
+          label="生年月日"
+          required={true}
+          errorMessage="入力してください"
+          errorId="birth-error"
+        >
+          <div class="form-group-input">
+            <input
+              type="date"
+              id="birth"
+              name="生年月日"
+              data-required="true"
+              value="2010-04-02"
+            />
+          </div>
+        </FormSection>
+
+        <!-- 住所（郵便番号から自動補完） -->
+        <AddressAutofill required={true} />
+
+        <!-- 電話番号 -->
+        <FormSection
+          label="本人または保護者の電話番号"
+          required={true}
+          description="給付が内定された方へ、財団から確認のご連絡を差し上げることがありますので、必ず連絡がつく電話番号をご記入下さい。記入の際はハイフンを入れてください。"
+          errorMessage="入力してください"
+          errorId="phone-error"
+        >
+          <div class="form-group-input">
+            <input
+              type="tel"
+              id="phone-number"
+              name="本人または保護者の電話番号"
+              placeholder="090-0123-4567"
+              data-required="true"
+            />
+          </div>
+        </FormSection>
+
+        <!-- 学校検索 -->
+        <SchoolSearch
+          codeName="学校コード"
+          schoolName="学校名"
+          required={true}
+        />
+
+        <!-- 性別確認 -->
+        <FormSection
+          label="あなたは女性ですか？"
+          required={true}
+          description="性自認もしくは戸籍上の性別が女性の方が対象です。"
+          errorMessage="入力してください"
+          errorId="gender-error"
+        >
+          <div class="checkbox-wrapper">
+            <input
+              type="checkbox"
+              id="gender"
+              name="あなたは女性ですか？"
+              value="はい"
+              data-required="true"
+            />
+            <label for="gender">はい</label>
+          </div>
+        </FormSection>
+
+        <!-- STEM興味きっかけ -->
+        <TextareaWithCount
+          name="STEM（理系）分野に興味を持ったきっかけ"
+          label="STEM（理系）分野に興味を持ったきっかけや、進学して学んでみたいことや将来つきたい仕事のイメージについて、もしあればお聞かせください。まだ進路が決まっていない場合は、現在考えていることや興味のあることを教えてください。"
+          description="100文字程度、上限200文字"
+          required={true}
+          targetLength={100}
+          maxLength={200}
+        />
+
+        <!-- 興味分野 -->
+        <FormSection
+          label="あなたが最も興味のある分野を1つお選びください。（あくまで現時点で関心を持っているものをお選び頂く形であり、将来変更になっても選考や給付への影響はありません。）"
+          required={true}
+          errorMessage="入力してください"
+          errorId="interest-error"
+        >
+          <select
+            id="interesting"
+            name="最も興味のある分野"
+            data-required="true"
+          >
+            {
+              interestFields.map((field) => (
+                <option value={field.value}>{field.label}</option>
+              ))
+            }
+          </select>
+        </FormSection>
+
+        <!-- ハードル（ランダム化） -->
+        <RandomizedCheckbox
+          name="ハードル[]"
+          items={hurdleItems}
+          exclusiveItem="上記の中に当てはまるものはない"
+          maxSelect={3}
+          required={true}
+          label="高校・高専での学びやその先の理系での進路/キャリアを描いていく上でハードルになっている、またはハードルになっていたことを最大3つまでお選びください。ハードルが特にない場合は、「上記の中に当てはまるものはない」をお選びください。"
+        />
+
+        <!-- その他ハードル -->
+        <TextareaWithCount
+          name="その他ハードル"
+          label="その他、上記以外でハードルになっていることがあれば自由にお書きください。"
+          required={false}
+          targetLength={100}
+          maxLength={500}
+        />
+
+        <!-- 文理選択 -->
+        <FormSection
+          label="現在、あなた自身の文理選択について、どう考えていますか？"
+          required={true}
+          errorMessage="入力してください"
+          errorId="bunri-error"
+        >
+          <select id="bunri" name="文理選択" data-required="true">
+            {
+              bunriOptions.map((opt) => (
+                <option value={opt.value}>{opt.label}</option>
+              ))
+            }
+          </select>
+        </FormSection>
+
+        <!-- 認知経路 -->
+        <MultiCheckbox
+          name="当財団を知ったきっかけ[]"
+          items={kikkakeItems}
+          otherItem="その他"
+          shuffle={false}
+          required={true}
+          label="あなたが当財団を知ったきっかけを教えてください（複数回答可）"
+        />
+
+        <!-- その他きっかけ -->
+        <TextareaWithCount
+          name="その他きっかけ"
+          label="上記で「その他」を選んだ方は、どのように当財団を知ったのか教えてください。"
+          required={false}
+          targetLength={50}
+          maxLength={200}
+        />
+
+        <!-- 保護者同意 -->
+        <FormSection
+          label="今回のご応募にあたって、保護者の同意を得ていますか。"
+          required={true}
+          errorMessage="入力してください"
+          errorId="consent-error"
+        >
+          <div class="checkbox-wrapper">
+            <input
+              type="checkbox"
+              id="consent"
+              name="保護者の同意"
+              value="はい"
+              data-required="true"
+            />
+            <label for="consent">はい</label>
+          </div>
+        </FormSection>
+
+        <!-- 過去給付確認 -->
+        <FormSection
+          label="過去に山田進太郎D&I財団の奨学金、奨学助成金の給付は受けていないですか？"
+          required={true}
+          description="過去に、本財団の奨学金または奨学助成金を受け取ったことのある方は給付対象外となります。"
+          errorMessage="入力してください"
+          errorId="scholarship-error"
+        >
+          <div class="checkbox-wrapper">
+            <input
+              type="checkbox"
+              id="scholarship"
+              name="奨学助成金の給付の有無"
+              value="はい"
+              data-required="true"
+            />
+            <label for="scholarship">はい</label>
+          </div>
+        </FormSection>
+
+        <!-- メルマガ -->
+        <FormSection
+          label="山田進太郎D&I財団がお送りする各種無料メルマガ（STEM分野に興味がある女子向けイベント情報等）の購読を希望しますか？"
+          required={true}
+          errorMessage="入力してください"
+          errorId="magazine-error"
+        >
+          <select id="magazine" name="メルマガ意向" data-required="true">
+            <option value="">選択してください</option>
+            <option value="はい" selected>はい</option>
+            <option value="いいえ">いいえ</option>
+            <option value="購読済み">購読済み</option>
+          </select>
+        </FormSection>
+
+        <!-- 個人情報同意 -->
+        <FormSection
+          label="個人情報の取扱の規約に同意する"
+          required={true}
+          errorMessage="入力してください"
+          errorId="privacy-error"
+        >
+          <p class="description">
+            個人情報の取扱については
+            <a
+              href="https://www.shinfdn.org/privacy"
+              target="_blank"
+              rel="noopener">こちら</a
+            >
+            をご確認ください。
+          </p>
+          <div class="checkbox-wrapper">
+            <input
+              type="checkbox"
+              id="agree"
+              name="個人情報利用同意"
+              data-required="true"
+            />
+            <label for="agree">利用規約に同意する</label>
+          </div>
+        </FormSection>
+
+        <div
+          class="_formrun_gotcha"
+          style="position: absolute !important; height: 1px; width: 1px; overflow: hidden;"
+        >
+          <label for="_formrun_gotcha"
+            >If you are a human, ignore this field</label
+          >
+          <input
+            type="text"
+            name="_formrun_gotcha"
+            id="_formrun_gotcha"
+            tabindex="-1"
+          />
+        </div>
+
+        <!-- 送信ボタン -->
+        <div class="form-group">
+          <button type="submit" id="formSubmit">送信</button>
+        </div>
+
+        <!-- バリデーション -->
+        <FormValidator formId="validatedForm" />
+      </form>
+    </div>
+  </main>
+</FormLayout>
+
+<script>
+  // URLパラメータから自動入力
+  function autofillFromURL() {
+    const params = new URLSearchParams(window.location.search)
+
+    // メールアドレス（URLSearchParams は + をスペースに変換するため、生のクエリ文字列から取得）
+    const rawParams = window.location.search.slice(1)
+    const emailMatch = rawParams.match(/(?:^|&)email=([^&]*)/)
+    const email = emailMatch ? decodeURIComponent(emailMatch[1]) : null
+    if (email) {
+      const emailInput = document.getElementById('email') as HTMLInputElement
+      if (emailInput) emailInput.value = email
+    }
+
+    // プレエントリーID
+    const entryNumber = params.get('entry_number')
+    if (entryNumber) {
+      const secretInput = document.getElementById(
+        'secretID',
+      ) as HTMLInputElement
+      if (secretInput) secretInput.value = entryNumber
+    }
+  }
+
+  // フォーム送信（バリデーション通過後に発火 → formrun へネイティブ送信）
+  const form = document.getElementById('validatedForm') as HTMLFormElement
+  const submitBtn = document.getElementById('formSubmit') as HTMLButtonElement
+
+  form.addEventListener('validated-submit', () => {
+    // 連打防止: 送信ボタンを無効化 + テキスト変更
+    submitBtn.disabled = true
+    submitBtn.textContent = '送信中...'
+
+    // 重複送信防止用の送信ID を hidden で注入
+    const submissionId = document.createElement('input')
+    submissionId.type = 'hidden'
+    submissionId.name = '送信ID'
+    submissionId.value = crypto.randomUUID()
+    form.appendChild(submissionId)
+
+    // ネイティブ form 送信（formrun API が受信 → リダイレクト）
+    form.submit()
+  })
+
+  // 初期化
+  document.addEventListener('DOMContentLoaded', () => {
+    autofillFromURL()
+  })
+</script>
