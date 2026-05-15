@@ -13,8 +13,10 @@
 interface Props {
   /** input要素のname属性 */
   name: string
-  /** 選択肢の配列 */
-  items: string[]
+  /** 選択肢の配列（フラット）。`blocks` を指定する場合は省略可 */
+  items?: string[]
+  /** ブロック単位の選択肢。`shuffle=true` のときブロック内・ブロック間ともランダム表示 */
+  blocks?: string[][]
   /** 最後に表示する追加選択肢（「その他」など） */
   otherItem?: string
   /** 選択肢をシャッフルするかどうか */
@@ -32,6 +34,7 @@ interface Props {
 const {
   name,
   items,
+  blocks,
   otherItem,
   shuffle = false,
   required = false,
@@ -39,6 +42,13 @@ const {
   label,
   description,
 } = Astro.props
+
+// blocks があればそれを優先し、各要素に block index を付与してフラット化
+const flatItems: { value: string; block: number | null }[] = blocks
+  ? blocks.flatMap((blockItems, blockIdx) =>
+      blockItems.map((value) => ({ value, block: blockIdx })),
+    )
+  : (items ?? []).map((value) => ({ value, block: null }))
 ---
 
 <div
@@ -46,6 +56,7 @@ const {
   id={id}
   data-name={name}
   data-shuffle={shuffle.toString()}
+  data-block-random={blocks ? 'true' : 'false'}
 >
   {
     label && (
@@ -59,16 +70,20 @@ const {
 
   <div class="checkbox-container">
     {
-      items.map((item, idx) => (
-        <div class="checkbox-wrapper" data-shuffle={shuffle ? 'true' : 'false'}>
+      flatItems.map((item, idx) => (
+        <div
+          class="checkbox-wrapper"
+          data-shuffle={shuffle ? 'true' : 'false'}
+          data-block={item.block !== null ? String(item.block) : null}
+        >
           <input
             type="checkbox"
             id={`${id}-${idx}`}
             name={name}
-            value={item}
+            value={item.value}
             data-required={required}
           />
-          <label for={`${id}-${idx}`}>{item}</label>
+          <label for={`${id}-${idx}`}>{item.value}</label>
         </div>
       ))
     }
@@ -94,25 +109,42 @@ const {
 <script>
   import { shuffleArray } from '@data/shuffle'
 
-  document.querySelectorAll('.multi-checkbox').forEach((container) => {
+  document.querySelectorAll<HTMLElement>('.multi-checkbox').forEach((container) => {
     const checkboxContainer = container.querySelector('.checkbox-container')
     const shouldShuffle = container.dataset.shuffle === 'true'
+    const blockRandom = container.dataset.blockRandom === 'true'
 
-    if (shouldShuffle && checkboxContainer) {
-      const items = Array.from(
-        checkboxContainer.querySelectorAll('[data-shuffle="true"]'),
-      )
-      const otherItem = checkboxContainer.querySelector('[data-other="true"]')
+    if (!shouldShuffle || !checkboxContainer) return
 
+    const items = Array.from(
+      checkboxContainer.querySelectorAll<HTMLElement>('[data-shuffle="true"]'),
+    )
+    const otherItem = checkboxContainer.querySelector('[data-other="true"]')
+
+    if (blockRandom) {
+      // ブロックごとにグループ化 → ブロック内シャッフル → ブロックの並びもシャッフル
+      const blockMap = new Map<string, HTMLElement[]>()
+      items.forEach((item) => {
+        const key = item.dataset.block ?? ''
+        if (!blockMap.has(key)) blockMap.set(key, [])
+        blockMap.get(key)!.push(item)
+      })
+
+      const shuffledBlocks = Array.from(blockMap.values())
+      shuffledBlocks.forEach((blockItems) => shuffleArray(blockItems))
+      shuffleArray(shuffledBlocks)
+
+      shuffledBlocks
+        .flat()
+        .forEach((item) => checkboxContainer.appendChild(item))
+    } else {
       shuffleArray(items)
-
-      // Re-append in shuffled order
       items.forEach((item) => checkboxContainer.appendChild(item))
+    }
 
-      // Other item always at the end
-      if (otherItem) {
-        checkboxContainer.appendChild(otherItem)
-      }
+    // Other item always at the end
+    if (otherItem) {
+      checkboxContainer.appendChild(otherItem)
     }
   })
 </script>
