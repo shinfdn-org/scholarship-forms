@@ -518,7 +518,7 @@ const bunriOptions = [
     // メールアドレス（URLSearchParams は + をスペースに変換するため、生のクエリ文字列から取得）
     const rawParams = window.location.search.slice(1)
     const emailMatch = rawParams.match(/(?:^|&)email=([^&]*)/)
-    const email = emailMatch ? decodeURIComponent(emailMatch[1]) : null
+    const email = emailMatch ? decodeURIComponent(emailMatch[1]).replace(/ /g, "+") : null
     if (email) {
       const emailInput = document.getElementById('email') as HTMLInputElement
       if (emailInput) emailInput.value = email
