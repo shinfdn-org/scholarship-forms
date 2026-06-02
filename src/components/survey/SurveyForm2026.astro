@@ -35,10 +35,18 @@ interface Props {
     showUntil: string
     message: string
   }
+  /** アーカイブ（プレビュー）モード。送信ボタンを無効化し、プレビュー告知を表示 */
+  archive?: boolean
 }
 
-const { isScholar, formAction, maintenance, closeAt, preMaintenanceNotice } =
-  Astro.props
+const {
+  isScholar,
+  formAction,
+  maintenance,
+  closeAt,
+  preMaintenanceNotice,
+  archive = false,
+} = Astro.props
 
 // ========================================
 // データ定数
@@ -173,6 +181,16 @@ const scoreLabels = [
     )
   }
   {closeAt && <ClosedBanner closeAt={closeAt} />}
+  {
+    archive && (
+      <div class="archive-notice" role="note">
+        <p class="archive-notice-title">ℹ️ プレビュー</p>
+        <p>
+          このページは過去のアンケートフォームを後から確認するためのアーカイブです。送信はできません。
+        </p>
+      </div>
+    )
+  }
   <main>
     <div class="top-title">
       <h1>STEM(理系)女子奨学助成金</h1>
@@ -1260,7 +1278,9 @@ const scoreLabels = [
         )
       }
       <div class="form-group">
-        <button type="submit" id="submitBtn">回答を送信する</button>
+        <button type="submit" id="submitBtn" disabled={archive}>
+          {archive ? 'アーカイブのため送信できません' : '回答を送信する'}
+        </button>
       </div>
     </form>
 
@@ -1269,6 +1289,24 @@ const scoreLabels = [
 </FormLayout>
 
 <style>
+  .archive-notice {
+    max-width: var(--form-max-width, 550px);
+    margin: 1rem auto;
+    padding: 1rem 1.25rem;
+    background-color: #e3f2fd;
+    border-left: 4px solid #2196f3;
+    border-radius: 4px;
+    color: #0d47a1;
+  }
+
+  .archive-notice p {
+    margin: 0.25rem 0;
+  }
+
+  .archive-notice-title {
+    font-weight: bold;
+  }
+
   .section-header {
     margin: 2rem 0 1rem;
     font-size: 1.1rem;
