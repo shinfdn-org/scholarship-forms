@@ -5,32 +5,52 @@
  * 使い方:
  *   <ClosedBanner closeAt="2026-05-01T01:00:00+09:00" />
  *
+ *   見出し・本文を差し替える場合（本文はスロット）:
+ *   <ClosedBanner
+ *     closeAt="2026-09-30T12:00:00+09:00"
+ *     subTitles={['STEM(理系)女子奨学助成金', '申し込みフォーム']}
+ *   >
+ *     <p>2026年度STEM(理系)女子奨学助成金の受付は終了しました。</p>
+ *   </ClosedBanner>
+ *
  * - closeAt: ISO 8601 形式の日時文字列（タイムゾーン付き）
+ * - subTitles / title: 見出し部分の文言。省略時はフォローアップ調査用の文言
+ * - 本文はスロットで差し替え可能。省略時は「現在非公開」の案内
  * - closeAt 以前はバナーは非表示、フォームはそのまま表示される
  * - closeAt 以降はフォーム（同階層の <main> 要素）が非表示になり、
  *   受付終了の案内が表示される
  * - 1 分おきに自動チェックするため、開いたままのタブでも自動切替される
+ * - 切替はブラウザ側のみ。form.run 側の受付停止は別途行うこと
  *
  * 不要になったら props を外すか、コンポーネントごと削除してください。
  */
 interface Props {
   /** 受付終了日時（ISO 8601） */
   closeAt: string
+  /** 見出しの上に表示するサブタイトル（1 行 1 要素） */
+  subTitles?: string[]
+  /** 見出し */
+  title?: string
 }
 
-const { closeAt } = Astro.props
+const {
+  closeAt,
+  subTitles = ['STEM(理系)女子奨学助成金応募者', 'フォローアップ調査'],
+  title = '受付終了',
+} = Astro.props
 ---
 
 <div id="closed-banner" data-close-at={closeAt} style="display:none">
   <div class="top-title">
-    <p class="sub-title">STEM(理系)女子奨学助成金応募者</p>
-    <p class="sub-title">フォローアップ調査</p>
-    <h1>受付終了</h1>
+    {subTitles.map((text) => <p class="sub-title">{text}</p>)}
+    <h1>{title}</h1>
 
     <div class="attention" style="margin-top: 2rem;">
-      <p>
-        ご覧いただいているフォーム入力画面は、現在非公開となっております。
-      </p>
+      <slot>
+        <p>
+          ご覧いただいているフォーム入力画面は、現在非公開となっております。
+        </p>
+      </slot>
     </div>
 
     <div style="text-align: center; margin-top: 3rem;">

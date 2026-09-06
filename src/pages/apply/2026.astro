@@ -6,6 +6,7 @@ import SchoolSearch from '@components/shared/SchoolSearch.astro'
 import RandomizedCheckbox from '@components/shared/RandomizedCheckbox.astro'
 import TextareaWithCount from '@components/shared/TextareaWithCount.astro'
 import FormValidator from '@components/shared/FormValidator.astro'
+import ClosedBanner from '@components/shared/ClosedBanner.astro'
 // apply-specific components
 import MultiCheckbox from '@components/apply/MultiCheckbox.astro'
 import AddressAutofill from '@components/apply/AddressAutofill.astro'
@@ -125,6 +126,16 @@ const bunriOptions = [
 ---
 
 <FormLayout title="STEM(理系)女子奨学助成金申し込み">
+  <ClosedBanner
+    closeAt="2026-09-30T12:00:00+09:00"
+    subTitles={['STEM(理系)女子奨学助成金', '申し込みフォーム']}
+  >
+    <p>2026年度STEM(理系)女子奨学助成金の受付は終了しました。</p>
+    <p>
+      ご興味を持っていただきありがとうございます。<br />
+      2027年度（来年度）の奨学助成金募集要項については、2027年度に公式サイトにてお知らせ予定です。
+    </p>
+  </ClosedBanner>
   <main>
     <div class="top-title">
       <h1>STEM(理系)女子奨学助成金申し込み</h1>
@@ -518,7 +529,7 @@ const bunriOptions = [
     // メールアドレス（URLSearchParams は + をスペースに変換するため、生のクエリ文字列から取得）
     const rawParams = window.location.search.slice(1)
     const emailMatch = rawParams.match(/(?:^|&)email=([^&]*)/)
-    const email = emailMatch ? decodeURIComponent(emailMatch[1]).replace(/ /g, "+") : null
+    const email = emailMatch ? decodeURIComponent(emailMatch[1]).replace(/ /g, '+') : null
     if (email) {
       const emailInput = document.getElementById('email') as HTMLInputElement
       if (emailInput) emailInput.value = email
